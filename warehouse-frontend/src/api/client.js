@@ -1,4 +1,6 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+console.log('VITE_API_URL =', import.meta.env.VITE_API_URL);
+console.log('BASE_URL =', BASE_URL);
 
 function getToken() {
   return localStorage.getItem('khovan_token');
