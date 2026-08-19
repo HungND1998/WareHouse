@@ -1,0 +1,100 @@
+/* ============================================================
+   DESIGN TOKENS — "KhoVận" warehouse operations console
+   Lấy cảm hứng từ vạch kẻ sàn kho, biển báo an toàn, nhãn vận đơn.
+   ============================================================ */
+:root {
+  /* Màu nền / cấu trúc */
+  --ink: #16283f;          /* navy đậm — sidebar, chữ chính */
+  --ink-2: #223a58;        /* navy nhạt hơn 1 nấc */
+  --paper: #f4f5f3;        /* nền trang, xám ấm rất nhạt */
+  --surface: #ffffff;      /* nền card */
+  --line: #e2e4df;         /* viền nhẹ */
+  --line-strong: #c9cdc4;
+
+  /* Chữ */
+  --text: #1a2029;
+  --text-muted: #5c6470;
+  --text-faint: #8a9099;
+  --text-on-ink: #eef1f5;
+  --text-on-ink-muted: #a9b6c8;
+
+  /* Accent — vàng an toàn kho vận */
+  --amber: #f2a93b;
+  --amber-dark: #d68f24;
+  --amber-ink: #402c05;
+
+  /* Trạng thái */
+  --ok: #2f7d5b;
+  --ok-bg: #e7f3ec;
+  --warn: #c1443c;
+  --warn-bg: #fbeae9;
+  --info: #2b6cb0;
+  --info-bg: #e8f0fa;
+
+  /* Typography */
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+
+  /* Layout */
+  --sidebar-w: 232px;
+  --radius: 6px;
+  --radius-sm: 4px;
+  --shadow-sm: 0 1px 2px rgba(22, 40, 63, 0.06);
+  --shadow-md: 0 4px 16px rgba(22, 40, 63, 0.10);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0;
+  color: var(--ink);
+}
+
+a { color: inherit; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber-dark);
+  outline-offset: 2px;
+}
+
+code, .mono {
+  font-family: var(--font-mono);
+}
+
+/* ---------- Scrollbar tối giản ---------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
