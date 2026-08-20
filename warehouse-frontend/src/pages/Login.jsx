@@ -32,27 +32,25 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--ink)',
-        backgroundImage:
-          'repeating-linear-gradient(45deg, rgba(242,169,59,0.035) 0, rgba(242,169,59,0.035) 2px, transparent 2px, transparent 26px)',
+        background: 'radial-gradient(ellipse at top, #1e3a5f 0%, #0f1e33 70%)',
         padding: 20,
       }}
     >
-      <div style={{ width: '100%', maxWidth: 380 }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 30,
-              fontWeight: 700,
+              fontSize: 28,
+              fontWeight: 800,
               color: '#fff',
-              letterSpacing: '0.03em',
+              letterSpacing: '-0.02em',
             }}
           >
-            <span style={{ color: 'var(--amber)' }}>◈</span> KHOVẬN
+            <span style={{ color: 'var(--amber)' }}>◈</span> KhoVận
           </div>
-          <div className="mono" style={{ fontSize: 11, color: 'var(--text-on-ink-muted)', marginTop: 6, letterSpacing: '0.1em' }}>
-            HỆ THỐNG QUẢN LÝ KHO
+          <div style={{ fontSize: 13, color: 'var(--text-on-ink-muted)', marginTop: 4, fontWeight: 500 }}>
+            Hệ thống quản lý kho chuyên nghiệp
           </div>
         </div>
 
