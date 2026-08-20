@@ -3,7 +3,6 @@ import { api } from '../api/client';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { formatMoney, formatDate } from '../components/Badge';
-import './StockOut.css';
 
 function emptyItem() {
   return { product_id: '', quantity: '', price: '' };
@@ -129,131 +128,56 @@ export default function StockOut() {
       {modalOpen && (
         <Modal
           title="Tạo phiếu xuất kho"
-          wide={920}
+          wide
           onClose={() => setModalOpen(false)}
           footer={
-            <div className="stock-form-footer">
-              <div className="stock-form-total">
-                <span>Tổng thanh toán</span>
-                <strong className="mono">{formatMoney(total)}</strong>
+            <>
+              <div style={{ marginRight: 'auto', alignSelf: 'center', fontSize: 13 }}>
+                Tổng: <strong className="mono">{formatMoney(total)}</strong>
               </div>
-              <div className="stock-form-actions">
-                <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Hủy</button>
-                <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-                  {saving ? 'Đang lưu…' : 'Tạo phiếu xuất'}
-                </button>
-              </div>
-            </div>
+              <button className="btn btn-ghost" onClick={() => setModalOpen(false)}>Hủy</button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+                {saving ? 'Đang lưu…' : 'Tạo phiếu'}
+              </button>
+            </>
           }
         >
-          <form className="stock-form" onSubmit={handleSubmit}>
-            <section className="stock-form-section">
-              <div className="stock-section-heading">
-                <div>
-                  <div className="stock-section-kicker">Thông tin chung</div>
-                  <h4>Thông tin phiếu xuất</h4>
-                </div>
-                <span className="stock-section-step">01</span>
+          <form onSubmit={handleSubmit}>
+            <div className="field-row">
+              <div className="field">
+                <label>Kho xuất *</label>
+                <select value={warehouseId} required onChange={(e) => setWarehouseId(e.target.value)}>
+                  <option value="">— Chọn kho —</option>
+                  {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
               </div>
+              <div className="field">
+                <label>Khách hàng</label>
+                <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Tên khách hàng" />
+              </div>
+            </div>
+            <div className="field">
+              <label>Ghi chú</label>
+              <input value={note} onChange={(e) => setNote(e.target.value)} />
+            </div>
 
-              <div className="field-row stock-info-grid">
-                <div className="field">
-                  <label>Kho xuất <span className="required-mark">*</span></label>
-                  <select value={warehouseId} required onChange={(e) => setWarehouseId(e.target.value)}>
-                    <option value="">— Chọn kho —</option>
-                    {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Danh sách hàng xuất
+            </label>
+            <div style={{ marginTop: 8 }}>
+              {items.map((it, idx) => (
+                <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                  <select value={it.product_id} onChange={(e) => updateItem(idx, { product_id: e.target.value })}>
+                    <option value="">— Chọn sản phẩm —</option>
+                    {products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name} (tồn: {p.total_stock})</option>)}
                   </select>
-                  <div className="field-hint">Kho sẽ được trừ tồn khi phiếu được tạo.</div>
+                  <input type="number" min="1" placeholder="SL" value={it.quantity} onChange={(e) => updateItem(idx, { quantity: e.target.value })} />
+                  <input type="number" min="0" placeholder="Đơn giá" value={it.price} onChange={(e) => updateItem(idx, { price: e.target.value })} />
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => removeRow(idx)} disabled={items.length === 1}>×</button>
                 </div>
-                <div className="field">
-                  <label>Khách hàng</label>
-                  <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nhập tên khách hàng" />
-                  <div className="field-hint">Có thể bỏ trống nếu là xuất nội bộ.</div>
-                </div>
-              </div>
-
-              <div className="field stock-note-field">
-                <label>Ghi chú</label>
-                <textarea
-                  rows="3"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Thêm nội dung giao hàng, người nhận hoặc lưu ý cho phiếu xuất…"
-                />
-              </div>
-            </section>
-
-            <section className="stock-form-section stock-items-section">
-              <div className="stock-section-heading">
-                <div>
-                  <div className="stock-section-kicker">Chi tiết hàng hóa</div>
-                  <h4>Danh sách hàng xuất</h4>
-                </div>
-                <span className="stock-section-step">02</span>
-              </div>
-
-              <div className="stock-items-table">
-                <div className="stock-items-head">
-                  <span>Sản phẩm</span>
-                  <span>Số lượng</span>
-                  <span>Đơn giá</span>
-                  <span>Thành tiền</span>
-                  <span aria-hidden="true" />
-                </div>
-
-                <div className="stock-items-body">
-                  {items.map((it, idx) => {
-                    const lineTotal = (Number(it.quantity) || 0) * (Number(it.price) || 0);
-                    return (
-                      <div key={idx} className="stock-item-row">
-                        <div className="stock-item-product">
-                          <span className="stock-row-index mono">{String(idx + 1).padStart(2, '0')}</span>
-                          <select value={it.product_id} onChange={(e) => updateItem(idx, { product_id: e.target.value })}>
-                            <option value="">— Chọn sản phẩm —</option>
-                            {products.map((p) => <option key={p.id} value={p.id}>{p.sku} — {p.name} (tồn: {p.total_stock})</option>)}
-                          </select>
-                        </div>
-                        <input
-                          className="stock-number-input"
-                          type="number"
-                          min="1"
-                          placeholder="0"
-                          value={it.quantity}
-                          onChange={(e) => updateItem(idx, { quantity: e.target.value })}
-                        />
-                        <input
-                          className="stock-number-input"
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={it.price}
-                          onChange={(e) => updateItem(idx, { price: e.target.value })}
-                        />
-                        <div className="stock-line-total mono">{formatMoney(lineTotal)}</div>
-                        <button
-                          type="button"
-                          className="stock-remove-row"
-                          onClick={() => removeRow(idx)}
-                          disabled={items.length === 1}
-                          aria-label={`Xóa dòng ${idx + 1}`}
-                          title="Xóa dòng"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button type="button" className="stock-add-row" onClick={addRow}>
-                <span className="stock-add-icon">+</span>
-                <span>
-                  <strong>Thêm dòng hàng</strong>
-                  <small>Thêm một sản phẩm khác vào phiếu</small>
-                </span>
-              </button>
-            </section>
+              ))}
+            </div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={addRow}>+ Thêm dòng hàng</button>
           </form>
         </Modal>
       )}
