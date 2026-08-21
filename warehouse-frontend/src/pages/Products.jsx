@@ -1,10 +1,13 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api/client';
 import Modal from '../components/Modal';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../auth/AuthContext';
 import { StockBadge, formatMoney, formatNumber } from '../components/Badge';
 import StatCard from '../components/StatCard';
+import TableState from '../components/TableState';
+import Pagination from '../components/Pagination';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 
 const EMPTY_FORM = {
   sku: '',
@@ -25,19 +28,35 @@ export default function Products() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     api
-      .get('/products', { search, category_id: categoryFilter, limit: 500 })
-      .then((res) => setRows(res.data || []))
-      .catch((err) => push(err.message, 'error'))
+      .get('/products', { search, category_id: categoryFilter, limit: 1000 })
+      .then((res) => {
+        setRows(res.data || []);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message || 'Không thể tải dữ liệu sản phẩm.');
+        push(err.message, 'error');
+      })
       .finally(() => setLoading(false));
   }, [search, categoryFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoryFilter]);
 
   useEffect(() => {
     api.get('/categories').then((res) => setCategories(res.data || []));
@@ -47,6 +66,11 @@ export default function Products() {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
   }, [load]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return rows.slice(start, start + pageSize);
+  }, [rows, page, pageSize]);
 
   function openCreate() {
     setEditing(null);
@@ -70,28 +94,28 @@ export default function Products() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!form.sku?.trim()) return push('Vui lòng nhập mã SKU.', 'error');
-    if (!form.name?.trim()) return push('Vui lòng nhập tên sản phẩm.', 'error');
-
+    if (!form.sku || !form.name) {
+      return push('Vui lòng điền đủ SKU và Tên sản phẩm.', 'error');
+    }
     setSaving(true);
-    const payload = {
-      ...form,
-      sku: form.sku.trim().toUpperCase(),
-      name: form.name.trim(),
-      category_id: form.category_id ? Number(form.category_id) : null,
-      cost_price: Number(form.cost_price) || 0,
-      sale_price: Number(form.sale_price) || 0,
-      min_stock: Number(form.min_stock) || 0,
-      description: form.description?.trim() || null,
-    };
-
     try {
+      const payload = {
+        sku: form.sku.trim(),
+        name: form.name.trim(),
+        category_id: form.category_id ? Number(form.category_id) : null,
+        unit: form.unit?.trim() || 'cái',
+        cost_price: Number(form.cost_price) || 0,
+        sale_price: Number(form.sale_price) || 0,
+        min_stock: Number(form.min_stock) || 0,
+        description: form.description?.trim() || null,
+      };
+
       if (editing) {
         await api.put(`/products/${editing.id}`, payload);
-        push('Đã cập nhật sản phẩm thành công!');
+        push('Cập nhật sản phẩm thành công!');
       } else {
         await api.post('/products', payload);
-        push('Đã thêm sản phẩm mới thành công!');
+        push('Tạo sản phẩm mới thành công!');
       }
       setModalOpen(false);
       load();
@@ -102,23 +126,31 @@ export default function Products() {
     }
   }
 
-  async function handleDelete(row) {
-    if (!confirm(`Xóa sản phẩm "${row.name}"?`)) return;
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteLoading(true);
     try {
-      await api.del(`/products/${row.id}`);
-      push('Đã xóa sản phẩm.');
+      await api.del(`/products/${deleting.id}`);
+      push(`Đã xóa sản phẩm "${deleting.name}".`);
+      setDeleting(null);
       load();
     } catch (err) {
-      push(err.message, 'error');
+      push(err.message || 'Không thể xóa sản phẩm.', 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
   // Stats
   const stats = useMemo(() => {
     const total = rows.length;
-    const lowStock = rows.filter((p) => p.min_stock != null && p.total_stock <= p.min_stock).length;
+    const outOfStock = rows.filter((p) => (Number(p.total_stock) || 0) <= 0).length;
+    const lowStock = rows.filter((p) => {
+      const qty = Number(p.total_stock) || 0;
+      return p.min_stock != null && qty > 0 && qty <= Number(p.min_stock);
+    }).length;
     const totalInventoryQty = rows.reduce((sum, p) => sum + (Number(p.total_stock) || 0), 0);
-    return { total, lowStock, totalInventoryQty };
+    return { total, outOfStock, lowStock, totalInventoryQty };
   }, [rows]);
 
   function handleExportExcel() {
@@ -164,7 +196,7 @@ export default function Products() {
       </div>
 
       {/* Stats Tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
+      <div className="stats-grid">
         <StatCard
           label="Tổng mặt hàng"
           value={stats.total}
@@ -173,14 +205,21 @@ export default function Products() {
           subtext="Sản phẩm trong danh mục"
         />
         <StatCard
-          label="Cảnh báo tồn kho thấp"
-          value={stats.lowStock}
-          icon="⚠️"
-          color={stats.lowStock > 0 ? 'red' : 'green'}
-          subtext={stats.lowStock > 0 ? 'Dưới mức tối thiểu' : 'Đạt mức an toàn'}
+          label="Hết hàng"
+          value={stats.outOfStock}
+          icon="🚫"
+          color={stats.outOfStock > 0 ? 'red' : 'green'}
+          subtext={stats.outOfStock > 0 ? 'Tồn kho bằng 0 (Cần nhập)' : 'Không có sản phẩm hết hàng'}
         />
         <StatCard
-          label="Tổng số lượng tồn trong kho"
+          label="Sản phẩm sắp hết"
+          value={stats.lowStock}
+          icon="⚠️"
+          color={stats.lowStock > 0 ? 'amber' : 'green'}
+          subtext={stats.lowStock > 0 ? 'Dưới mức tồn an toàn' : 'Tồn kho ổn định'}
+        />
+        <StatCard
+          label="Tổng số lượng tồn kho"
           value={formatNumber(stats.totalInventoryQty)}
           icon="▦"
           color="purple"
@@ -189,25 +228,20 @@ export default function Products() {
       </div>
 
       {/* Toolbar / Search & Filter */}
-      <div className="card" style={{ marginBottom: 16, padding: '12px 16px' }}>
-        <div className="toolbar" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 10, flex: 1, flexWrap: 'wrap' }}>
+      <div className="filter-bar">
+        <div className="toolbar">
+          <div style={{ display: 'flex', gap: 10, flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               className="search-input"
-              placeholder="🔍 Tìm theo tên hoặc mã SKU…"
+              placeholder="🔍 Tìm SKU hoặc tên sản phẩm…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ minWidth: 260 }}
+              style={{ minWidth: 280 }}
             />
             <select
+              className="filter-select"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              style={{
-                border: '1px solid var(--line-strong)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                background: 'var(--surface)',
-              }}
             >
               <option value="">Tất cả danh mục</option>
               {categories.map((c) => (
@@ -216,8 +250,21 @@ export default function Products() {
                 </option>
               ))}
             </select>
+            {Boolean(search || categoryFilter) && (
+              <button
+                type="button"
+                className="btn-reset-filter"
+                onClick={() => {
+                  setSearch('');
+                  setCategoryFilter('');
+                }}
+                title="Xóa tất cả điều kiện lọc"
+              >
+                <span>✕</span> Xóa bộ lọc
+              </button>
+            )}
           </div>
-          <div className="text-faint mono" style={{ fontSize: 12 }}>
+          <div className="record-count">
             Hiển thị <strong>{rows.length}</strong> sản phẩm
           </div>
         </div>
@@ -237,40 +284,51 @@ export default function Products() {
                 <th className="num">Giá vốn</th>
                 <th className="num">Giá bán</th>
                 <th className="num">Tồn kho</th>
-                <th style={{ width: 120 }}>Trạng thái</th>
-                <th style={{ width: 110, textAlign: 'right' }}>Thao tác</th>
+                <th style={{ width: 120, whiteSpace: 'nowrap' }}>Trạng thái</th>
+                <th style={{ width: 120, textAlign: 'right', whiteSpace: 'nowrap' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && !loading && (
-                <tr className="empty-row">
-                  <td colSpan={8}>Không tìm thấy sản phẩm nào phù hợp.</td>
-                </tr>
-              )}
-              {rows.map((p) => (
+              <TableState
+                loading={loading}
+                error={error}
+                rows={rows}
+                colSpan={8}
+                emptyIcon="📦"
+                emptyTitle={search || categoryFilter ? 'Không tìm thấy sản phẩm phù hợp' : 'Chưa có sản phẩm nào trong kho'}
+                emptySubtext={
+                  search || categoryFilter
+                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc danh mục đã chọn.'
+                    : 'Bắt đầu thêm mặt hàng mới để quản lý tồn kho và giá bán.'
+                }
+                actionText={!search && !categoryFilter ? '+ Thêm sản phẩm mới' : undefined}
+                onAction={!search && !categoryFilter ? openCreate : undefined}
+                onRetry={load}
+              />
+              {!loading && !error && paginatedRows.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <span className="sku-chip">{p.sku}</span>
                   </td>
                   <td>
-                    <strong style={{ color: 'var(--ink)' }}>{p.name}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{p.name}</strong>
                   </td>
-                  <td className="text-muted">{p.category_name || '—'}</td>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{p.category_name || '—'}</td>
                   <td className="num">{formatMoney(p.cost_price)}</td>
-                  <td className="num" style={{ fontWeight: 600 }}>{formatMoney(p.sale_price)}</td>
-                  <td className="num" style={{ fontWeight: 700 }}>
+                  <td className="num" style={{ fontWeight: 600, color: 'var(--ink)' }}>{formatMoney(p.sale_price)}</td>
+                  <td className="num" style={{ fontWeight: 800, color: 'var(--ink)', fontSize: 14 }}>
                     {formatNumber(p.total_stock)} {p.unit}
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <StockBadge quantity={p.total_stock} minStock={p.min_stock} />
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>
-                      Sửa
-                    </button>{' '}
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)} style={{ marginRight: 6 }}>
+                      ✏️ Sửa
+                    </button>
                     {user?.role === 'admin' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(p)}>
-                        Xóa
+                      <button className="btn btn-danger btn-sm" onClick={() => setDeleting(p)}>
+                        🗑️ Xóa
                       </button>
                     )}
                   </td>
@@ -279,6 +337,17 @@ export default function Products() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={rows.length}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          pageSizeOptions={[20, 50, 100]}
+        />
       </div>
 
       {/* Product Form Modal */}
@@ -288,7 +357,7 @@ export default function Products() {
           wide={700}
           onClose={() => setModalOpen(false)}
           footer={
-            <div style={{ display: 'flex', width: '100%', justifyContent: 'flex-end', gap: 10 }}>
+            <div className="modal-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
                 Hủy bỏ
               </button>
@@ -320,7 +389,7 @@ export default function Products() {
                   <input
                     value={form.sku}
                     required
-                    placeholder="VD: SP-001, PRD-A01..."
+                    placeholder="VD: SKU-001, PRD-A01..."
                     onChange={(e) => setForm({ ...form, sku: e.target.value.toUpperCase() })}
                     style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}
                   />
@@ -440,6 +509,18 @@ export default function Products() {
           </form>
         </Modal>
       )}
+
+      {/* Confirm Delete Product Modal */}
+      <ConfirmDeleteModal
+        open={Boolean(deleting)}
+        title="Xóa sản phẩm"
+        itemName={deleting ? `${deleting.sku} — ${deleting.name}` : ''}
+        itemType="sản phẩm"
+        warningText="Xóa sản phẩm sẽ loại bỏ thông tin sản phẩm và các bản ghi tồn kho liên quan khỏi danh mục quản lý."
+        onConfirm={confirmDelete}
+        onClose={() => setDeleting(null)}
+        loading={deleteLoading}
+      />
     </div>
   );
 }

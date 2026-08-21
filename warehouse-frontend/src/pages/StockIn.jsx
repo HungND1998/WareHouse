@@ -1,18 +1,23 @@
 import { useEffect, useState, useMemo } from 'react';
 import { api } from '../api/client';
 import { useToast } from '../components/Toast';
-import { formatMoney, formatDate } from '../components/Badge';
+import { formatMoney, formatDate, DateTime } from '../components/Badge';
 import StockDocumentModal from '../components/StockDocumentModal';
 import StockDocumentDetailModal from '../components/StockDocumentDetailModal';
 import StatCard from '../components/StatCard';
+import TableState from '../components/TableState';
+import Pagination from '../components/Pagination';
 
 export default function StockIn() {
   const { push } = useToast();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [warehouses, setWarehouses] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   // Search & Filter
   const [search, setSearch] = useState('');
@@ -24,12 +29,23 @@ export default function StockIn() {
 
   function load() {
     setLoading(true);
+    setError(null);
     api
       .get('/stock-in')
-      .then((res) => setRows(res.data || []))
-      .catch((err) => push(err.message, 'error'))
+      .then((res) => {
+        setRows(res.data || []);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message || 'Không thể tải lịch sử nhập kho.');
+        push(err.message, 'error');
+      })
       .finally(() => setLoading(false));
   }
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, warehouseFilter]);
 
   useEffect(() => {
     load();
@@ -41,7 +57,7 @@ export default function StockIn() {
   async function openDetail(row) {
     try {
       const res = await api.get(`/stock-in/${row.id}`);
-      setDetailOpen(res.data);
+      setDetailOpen({ ...row, ...res.data });
     } catch (err) {
       push(err.message, 'error');
     }
@@ -49,16 +65,23 @@ export default function StockIn() {
 
   // Filtered rows
   const filteredRows = useMemo(() => {
+    if (!search.trim() && !warehouseFilter) return rows;
+    const term = search.toLowerCase();
     return rows.filter((r) => {
       const matchSearch =
-        !search ||
-        r.code?.toLowerCase().includes(search.toLowerCase()) ||
-        r.supplier_name?.toLowerCase().includes(search.toLowerCase()) ||
-        r.warehouse_name?.toLowerCase().includes(search.toLowerCase());
-      const matchWh = !warehouseFilter || String(r.warehouse_id) === String(warehouseFilter);
-      return matchSearch && matchWh;
+        !term ||
+        r.code?.toLowerCase().includes(term) ||
+        r.supplier_name?.toLowerCase().includes(term) ||
+        r.warehouse_name?.toLowerCase().includes(term);
+      const matchWarehouse = !warehouseFilter || String(r.warehouse_id) === String(warehouseFilter);
+      return matchSearch && matchWarehouse;
     });
   }, [rows, search, warehouseFilter]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page, pageSize]);
 
   // Stats
   const stats = useMemo(() => {
@@ -109,7 +132,7 @@ export default function StockIn() {
       </div>
 
       {/* Stats Tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
+      <div className="stats-grid">
         <StatCard
           label="Tổng số phiếu nhập"
           value={stats.totalIn}
@@ -130,31 +153,27 @@ export default function StockIn() {
           value={suppliers.length}
           icon="🏬"
           color="purple"
+          to="/suppliers"
           subtext="Đối tác cung ứng"
         />
       </div>
 
       {/* Toolbar / Search & Filter */}
-      <div className="card" style={{ marginBottom: 16, padding: '12px 16px' }}>
-        <div className="toolbar" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 10, flex: 1, flexWrap: 'wrap' }}>
+      <div className="filter-bar">
+        <div className="toolbar">
+          <div style={{ display: 'flex', gap: 10, flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
               className="search-input"
-              placeholder="🔍 Tìm theo mã phiếu, nhà cung cấp..."
+              placeholder="🔍 Tìm mã phiếu, nhà cung cấp…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ minWidth: 260 }}
+              style={{ minWidth: 280 }}
             />
             <select
+              className="filter-select"
               value={warehouseFilter}
               onChange={(e) => setWarehouseFilter(e.target.value)}
-              style={{
-                border: '1px solid var(--line-strong)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                background: 'var(--surface)',
-              }}
             >
               <option value="">Tất cả kho nhập</option>
               {warehouses.map((w) => (
@@ -163,8 +182,21 @@ export default function StockIn() {
                 </option>
               ))}
             </select>
+            {Boolean(search || warehouseFilter) && (
+              <button
+                type="button"
+                className="btn-reset-filter"
+                onClick={() => {
+                  setSearch('');
+                  setWarehouseFilter('');
+                }}
+                title="Xóa tất cả điều kiện lọc"
+              >
+                <span>✕</span> Xóa bộ lọc
+              </button>
+            )}
           </div>
-          <div className="text-faint mono" style={{ fontSize: 12 }}>
+          <div className="record-count">
             Hiển thị <strong>{filteredRows.length}</strong> / {rows.length} phiếu
           </div>
         </div>
@@ -178,38 +210,49 @@ export default function StockIn() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 140 }}>Mã phiếu</th>
+                <th style={{ width: 175, whiteSpace: 'nowrap' }}>Mã phiếu</th>
                 <th>Kho nhập</th>
                 <th>Nhà cung cấp</th>
                 <th>Người tạo</th>
                 <th className="num" style={{ width: 150 }}>Tổng tiền</th>
                 <th style={{ width: 170 }}>Thời gian</th>
-                <th style={{ width: 90, textAlign: 'center' }}>Chi tiết</th>
+                <th style={{ width: 100, textAlign: 'center' }}>Chi tiết</th>
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 && !loading && (
-                <tr className="empty-row">
-                  <td colSpan={7}>
-                    {search || warehouseFilter ? 'Không tìm thấy phiếu nhập nào phù hợp.' : 'Chưa có phiếu nhập nào được tạo.'}
-                  </td>
-                </tr>
-              )}
-              {filteredRows.map((r) => (
+              <TableState
+                loading={loading}
+                error={error}
+                rows={filteredRows}
+                colSpan={7}
+                emptyIcon="📥"
+                emptyTitle={search || warehouseFilter ? 'Không tìm thấy phiếu nhập phù hợp' : 'Chưa có phiếu nhập kho nào'}
+                emptySubtext={
+                  search || warehouseFilter
+                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc kho hàng đã chọn.'
+                    : 'Bắt đầu quản lý nhập kho bằng cách lập phiếu nhập hàng đầu tiên.'
+                }
+                actionText={!search && !warehouseFilter ? '+ Tạo phiếu nhập mới' : undefined}
+                onAction={!search && !warehouseFilter ? () => setModalOpen(true) : undefined}
+                onRetry={load}
+              />
+              {!loading && !error && paginatedRows.map((r) => (
                 <tr key={r.id} onClick={() => openDetail(r)} style={{ cursor: 'pointer' }}>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <span className="sku-chip">{r.code}</span>
                   </td>
                   <td>
-                    <strong style={{ color: 'var(--ink)' }}>{r.warehouse_name}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{r.warehouse_name}</strong>
                   </td>
-                  <td>{r.supplier_name ? <span>{r.supplier_name}</span> : <span className="text-faint">—</span>}</td>
-                  <td className="text-muted">{r.created_by || '—'}</td>
-                  <td className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                    {r.supplier_name ? <span>{r.supplier_name}</span> : <span className="text-faint">—</span>}
+                  </td>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{r.created_by || '—'}</td>
+                  <td className="num" style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>
                     {formatMoney(r.total_amount)}
                   </td>
-                  <td className="text-faint" style={{ fontSize: 12.5 }}>
-                    {formatDate(r.created_at)}
+                  <td>
+                    <DateTime value={r.created_at} prefix="Tạo lúc" />
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <button
@@ -218,9 +261,9 @@ export default function StockIn() {
                         e.stopPropagation();
                         openDetail(r);
                       }}
-                      style={{ padding: '3px 8px', fontSize: 11 }}
+                      style={{ padding: '4px 10px', fontSize: 12, fontWeight: 600 }}
                     >
-                      Xem
+                      👁️ Xem
                     </button>
                   </td>
                 </tr>
@@ -228,6 +271,17 @@ export default function StockIn() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filteredRows.length}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          pageSizeOptions={[20, 50, 100]}
+        />
       </div>
 
       {/* Shared Create Stock Document Modal */}
@@ -247,6 +301,7 @@ export default function StockIn() {
         type="in"
         data={detailOpen}
         warehouses={warehouses}
+        suppliers={suppliers}
         onClose={() => setDetailOpen(null)}
       />
     </div>

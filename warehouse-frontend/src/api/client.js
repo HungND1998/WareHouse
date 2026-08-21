@@ -3,7 +3,7 @@ console.log('VITE_API_URL =', import.meta.env.VITE_API_URL);
 console.log('BASE_URL =', BASE_URL);
 
 function getToken() {
-  return localStorage.getItem('khovan_token');
+  return localStorage.getItem('khovan_token') || sessionStorage.getItem('khovan_token');
 }
 
 async function request(path, { method = 'GET', body, params } = {}) {

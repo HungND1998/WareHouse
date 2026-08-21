@@ -19,11 +19,20 @@ const getAll = asyncHandler(async (req, res) => {
 
 // GET /api/stock-in/:id
 const getOne = asyncHandler(async (req, res) => {
-  const header = db.prepare('SELECT * FROM stock_in WHERE id = ?').get(req.params.id);
+  const header = db
+    .prepare(
+      `SELECT si.*, w.name AS warehouse_name, s.name AS supplier_name, u.username AS created_by
+       FROM stock_in si
+       LEFT JOIN warehouses w ON w.id = si.warehouse_id
+       LEFT JOIN suppliers s ON s.id = si.supplier_id
+       LEFT JOIN users u ON u.id = si.user_id
+       WHERE si.id = ?`
+    )
+    .get(req.params.id);
   if (!header) throw new AppError('Không tìm thấy phiếu nhập.', 404);
   const items = db
     .prepare(
-      `SELECT sii.*, p.sku, p.name AS product_name
+      `SELECT sii.*, p.sku, p.name AS product_name, p.unit
        FROM stock_in_items sii JOIN products p ON p.id = sii.product_id
        WHERE sii.stock_in_id = ?`
     )

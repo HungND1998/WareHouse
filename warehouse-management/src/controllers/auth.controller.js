@@ -43,10 +43,30 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
-// GET /api/auth/me
-const me = asyncHandler(async (req, res) => {
-  const user = db.prepare('SELECT id, username, full_name, role, created_at FROM users WHERE id = ?').get(req.user.id);
-  res.json({ success: true, data: user });
+// PUT /api/auth/change-password
+const changePassword = asyncHandler(async (req, res) => {
+  const { old_password, new_password } = req.body;
+  if (!old_password || !new_password) throw new AppError('Vui lòng nhập mật khẩu cũ và mật khẩu mới.');
+  if (new_password.length < 6) throw new AppError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (!user) throw new AppError('Người dùng không tồn tại.', 404);
+
+  const valid = bcrypt.compareSync(old_password, user.password_hash);
+  if (!valid) throw new AppError('Mật khẩu hiện tại không chính xác.', 400);
+
+  const newHash = bcrypt.hashSync(new_password, 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(newHash, req.user.id);
+
+  res.json({ success: true, message: 'Đổi mật khẩu thành công.' });
 });
 
-module.exports = { register, login, me };
+// PUT /api/auth/profile
+const updateProfile = asyncHandler(async (req, res) => {
+  const { full_name } = req.body;
+  db.prepare('UPDATE users SET full_name = ? WHERE id = ?').run(full_name || null, req.user.id);
+  const updated = db.prepare('SELECT id, username, full_name, role, created_at FROM users WHERE id = ?').get(req.user.id);
+  res.json({ success: true, data: updated, message: 'Cập nhật thông tin thành công.' });
+});
+
+module.exports = { register, login, me, changePassword, updateProfile };

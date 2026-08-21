@@ -1,5 +1,5 @@
 import Modal from './Modal';
-import { formatMoney, formatDate, formatNumber } from './Badge';
+import { formatMoney, formatDate, formatNumber, DateTime } from './Badge';
 
 /**
  * Component xem chi tiết phiếu chứng từ kho dùng chung (Nhập kho / Xuất kho)
@@ -8,15 +8,17 @@ import { formatMoney, formatDate, formatNumber } from './Badge';
  * @param {Array} warehouses - Danh sách kho hàng để map tên
  * @param {Function} onClose - Hàm đóng modal
  */
-export default function StockDocumentDetailModal({ type = 'out', data, warehouses = [], onClose }) {
+export default function StockDocumentDetailModal({ type = 'out', data, warehouses = [], suppliers = [], onClose }) {
   if (!data) return null;
 
   const isIn = type === 'in';
   const typeLabel = isIn ? 'Phiếu nhập kho' : 'Phiếu xuất kho';
   const partnerLabel = isIn ? 'Nhà cung cấp' : 'Khách hàng / Đối tác';
-  const partnerValue = isIn ? data.supplier_name : data.customer_name;
+  const partnerValue = isIn
+    ? data.supplier_name || suppliers.find((s) => Number(s.id) === Number(data.supplier_id))?.name
+    : data.customer_name;
   const warehouseName =
-    warehouses.find((w) => w.id === data.warehouse_id)?.name || data.warehouse_name || '—';
+    data.warehouse_name || warehouses.find((w) => Number(w.id) === Number(data.warehouse_id))?.name || '—';
 
   return (
     <Modal
@@ -58,7 +60,7 @@ export default function StockDocumentDetailModal({ type = 'out', data, warehouse
         <div className="detail-meta-item">
           <div className="meta-label">Thời gian lập</div>
           <div className="meta-val" style={{ fontSize: 13, fontFamily: 'var(--font-mono)' }}>
-            {formatDate(data.created_at)}
+            <DateTime value={data.created_at} prefix="Lập phiếu" />
           </div>
         </div>
         <div className="detail-meta-item">
@@ -92,25 +94,25 @@ export default function StockDocumentDetailModal({ type = 'out', data, warehouse
             {data.items && data.items.length > 0 ? (
               data.items.map((it, i) => (
                 <tr key={it.id || i}>
-                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>{i + 1}</td>
+                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 12.5, fontWeight: 600 }}>{i + 1}</td>
                   <td>
                     <span className="sku-chip">{it.sku}</span>
                   </td>
                   <td>
-                    <strong>{it.product_name}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 13.5 }}>{it.product_name}</strong>
                   </td>
                   <td className="num">
-                    <strong>{formatNumber(it.quantity)}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 13.5 }}>{formatNumber(it.quantity)}</strong>
                   </td>
-                  <td className="num">{formatMoney(it.price)}</td>
-                  <td className="num" style={{ fontWeight: 700, color: 'var(--ink)' }}>
+                  <td className="num" style={{ color: 'var(--text-muted)' }}>{formatMoney(it.price)}</td>
+                  <td className="num" style={{ fontWeight: 800, color: 'var(--ink)', fontSize: 14 }}>
                     {formatMoney((it.quantity || 0) * (it.price || 0))}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: 20 }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-faint)' }}>
                   Không có dữ liệu mặt hàng
                 </td>
               </tr>
@@ -123,17 +125,17 @@ export default function StockDocumentDetailModal({ type = 'out', data, warehouse
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ flex: 1, minWidth: 240 }}>
           {data.note && (
-            <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', fontSize: 13 }}>
-              <div className="text-faint mono" style={{ fontSize: 11, marginBottom: 4, textTransform: 'uppercase' }}>Ghi chú</div>
-              <div>{data.note}</div>
+            <div style={{ background: '#f8fafc', border: '1px solid var(--line-strong)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', fontSize: 13 }}>
+              <div className="mono" style={{ fontSize: 11.5, marginBottom: 4, textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Ghi chú</div>
+              <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{data.note}</div>
             </div>
           )}
         </div>
-        <div style={{ background: '#fafbfa', border: '1.5px solid var(--line-strong)', borderRadius: 'var(--radius)', padding: '12px 18px', minWidth: 260, textAlign: 'right' }}>
-          <div className="text-faint mono" style={{ fontSize: 11, textTransform: 'uppercase', marginBottom: 4 }}>
+        <div style={{ background: '#f8fafc', border: '1.5px solid var(--line-strong)', borderRadius: 'var(--radius)', padding: '14px 20px', minWidth: 260, textAlign: 'right' }}>
+          <div className="mono" style={{ fontSize: 11.5, textTransform: 'uppercase', marginBottom: 4, color: 'var(--text-muted)', fontWeight: 700 }}>
             Tổng cộng thanh toán
           </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--ink)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: 'var(--ink)' }}>
             {formatMoney(data.total_amount)}
           </div>
         </div>

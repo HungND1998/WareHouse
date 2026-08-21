@@ -16,11 +16,19 @@ const getAll = asyncHandler(async (req, res) => {
 });
 
 const getOne = asyncHandler(async (req, res) => {
-  const header = db.prepare('SELECT * FROM stock_out WHERE id = ?').get(req.params.id);
+  const header = db
+    .prepare(
+      `SELECT so.*, w.name AS warehouse_name, u.username AS created_by
+       FROM stock_out so
+       LEFT JOIN warehouses w ON w.id = so.warehouse_id
+       LEFT JOIN users u ON u.id = so.user_id
+       WHERE so.id = ?`
+    )
+    .get(req.params.id);
   if (!header) throw new AppError('Không tìm thấy phiếu xuất.', 404);
   const items = db
     .prepare(
-      `SELECT soi.*, p.sku, p.name AS product_name
+      `SELECT soi.*, p.sku, p.name AS product_name, p.unit
        FROM stock_out_items soi JOIN products p ON p.id = soi.product_id
        WHERE soi.stock_out_id = ?`
     )

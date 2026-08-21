@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import Modal from './Modal';
-import { formatMoney, formatNumber } from './Badge';
+import { formatMoney, formatNumber, formatDateTime } from './Badge';
 
 function emptyItem() {
   return { product_id: '', quantity: 1, price: '' };
@@ -284,8 +284,8 @@ export default function StockDocumentModal({
                 type="text"
                 readOnly
                 disabled
-                value={new Date().toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                style={{ background: '#eef0ec', color: 'var(--text-muted)' }}
+                value={formatDateTime(new Date())}
+                style={{ background: '#eef0ec', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
               />
             </div>
           </div>

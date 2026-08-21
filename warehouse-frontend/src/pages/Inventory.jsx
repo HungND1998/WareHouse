@@ -1,8 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { api } from '../api/client';
-import { formatNumber, formatDate } from '../components/Badge';
+import { formatNumber, formatDate, DateTime } from '../components/Badge';
 import { useToast } from '../components/Toast';
 import StatCard from '../components/StatCard';
+import TableState from '../components/TableState';
+import Pagination from '../components/Pagination';
 
 export default function Inventory() {
   const { push } = useToast();
@@ -11,19 +13,37 @@ export default function Inventory() {
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    api
+      .get('/inventory', { warehouse_id: warehouseId })
+      .then((res) => {
+        setRows(res.data || []);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message || 'Không thể tải dữ liệu tồn kho.');
+        push(err.message, 'error');
+      })
+      .finally(() => setLoading(false));
+  }, [warehouseId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, warehouseId]);
 
   useEffect(() => {
     api.get('/warehouses').then((res) => setWarehouses(res.data || []));
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .get('/inventory', { warehouse_id: warehouseId })
-      .then((res) => setRows(res.data || []))
-      .catch((err) => push(err.message, 'error'))
-      .finally(() => setLoading(false));
-  }, [warehouseId]); // eslint-disable-line react-hooks/exhaustive-deps
+    load();
+  }, [load]);
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return rows;
@@ -36,6 +56,11 @@ export default function Inventory() {
       );
     });
   }, [rows, search]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, page, pageSize]);
 
   const stats = useMemo(() => {
     const totalLines = rows.length;
@@ -55,12 +80,13 @@ export default function Inventory() {
       </div>
 
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 20 }}>
+      <div className="stats-grid">
         <StatCard
           label="Mặt hàng lưu kho"
           value={stats.totalLines}
           icon="📦"
           color="blue"
+          to="/products"
           subtext="Tổng số mục hàng ghi nhận"
         />
         <StatCard
@@ -75,32 +101,28 @@ export default function Inventory() {
           value={warehouseId ? warehouses.find((w) => String(w.id) === String(warehouseId))?.name || 'Đã chọn kho' : 'Tất cả các kho'}
           icon="🏬"
           color="purple"
+          to="/warehouses"
           valueStyle={{ fontSize: 18 }}
           subtext={`${warehouses.length} cơ sở kho`}
         />
       </div>
 
       {/* Toolbar / Search & Filter */}
-      <div className="card" style={{ marginBottom: 16, padding: '12px 16px' }}>
-        <div className="toolbar" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', gap: 10, flex: 1, flexWrap: 'wrap' }}>
+      <div className="filter-bar">
+        <div className="toolbar">
+          <div style={{ display: 'flex', gap: 10, flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="text"
               className="search-input"
-              placeholder="🔍 Tìm theo SKU, tên sản phẩm, kho…"
+              placeholder="🔍 Tìm SKU hoặc tên sản phẩm…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ minWidth: 260 }}
+              style={{ minWidth: 280 }}
             />
             <select
+              className="filter-select"
               value={warehouseId}
               onChange={(e) => setWarehouseId(e.target.value)}
-              style={{
-                border: '1px solid var(--line-strong)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                background: 'var(--surface)',
-              }}
             >
               <option value="">Tất cả các kho</option>
               {warehouses.map((w) => (
@@ -109,8 +131,21 @@ export default function Inventory() {
                 </option>
               ))}
             </select>
+            {Boolean(search || warehouseId) && (
+              <button
+                type="button"
+                className="btn-reset-filter"
+                onClick={() => {
+                  setSearch('');
+                  setWarehouseId('');
+                }}
+                title="Xóa tất cả điều kiện lọc"
+              >
+                <span>✕</span> Xóa bộ lọc
+              </button>
+            )}
           </div>
-          <div className="text-faint mono" style={{ fontSize: 12 }}>
+          <div className="record-count">
             Hiển thị <strong>{filteredRows.length}</strong> dòng tồn kho
           </div>
         </div>
@@ -132,33 +167,50 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.length === 0 && !loading && (
-                <tr className="empty-row">
-                  <td colSpan={5}>
-                    {search || warehouseId ? 'Không tìm thấy dữ liệu tồn kho phù hợp.' : 'Chưa có dữ liệu tồn kho.'}
-                  </td>
-                </tr>
-              )}
-              {filteredRows.map((r) => (
+              <TableState
+                loading={loading}
+                error={error}
+                rows={filteredRows}
+                colSpan={5}
+                emptyTitle={search || warehouseId ? 'Không tìm thấy sản phẩm phù hợp' : 'Chưa có dữ liệu tồn kho'}
+                emptySubtext={
+                  search || warehouseId
+                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc kho hàng đã chọn.'
+                    : 'Hãy tạo phiếu nhập kho để ghi nhận số lượng tồn kho đầu tiên.'
+                }
+                onRetry={load}
+              />
+              {!loading && !error && paginatedRows.map((r) => (
                 <tr key={r.id}>
                   <td>
                     <span className="sku-chip">{r.sku}</span>
                   </td>
                   <td>
-                    <strong style={{ color: 'var(--ink)' }}>{r.product_name}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{r.product_name}</strong>
                   </td>
-                  <td className="text-muted">{r.warehouse_name}</td>
-                  <td className="num" style={{ fontWeight: 700, color: r.quantity <= 0 ? 'var(--warn)' : 'var(--ink)' }}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{r.warehouse_name}</td>
+                  <td className="num" style={{ fontWeight: 800, fontSize: 14, color: r.quantity <= 0 ? 'var(--warn)' : 'var(--ink)' }}>
                     {formatNumber(r.quantity)} {r.unit}
                   </td>
-                  <td className="text-faint" style={{ fontSize: 12.5 }}>
-                    {formatDate(r.updated_at)}
+                  <td>
+                    <DateTime value={r.updated_at} prefix="Cập nhật" />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={filteredRows.length}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          pageSizeOptions={[20, 50, 100]}
+        />
       </div>
     </div>
   );

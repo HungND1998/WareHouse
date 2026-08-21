@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
+import UserDropdown from './UserDropdown';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tổng quan', icon: '◧', end: true },
@@ -16,39 +17,14 @@ export default function Layout() {
   const { user, logout } = useAuth();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--paper)' }}>
+    <div className="app-container">
       {/* ========================================================================= */}
-      {/* 1. DARK NAVY SIDEBAR (Menu dọc chuẩn phong cách Đăng nhập Login)          */}
+      {/* 1. DARK NAVY SIDEBAR                                                      */}
       {/* ========================================================================= */}
-      <aside
-        style={{
-          width: 'var(--sidebar-w)',
-          flexShrink: 0,
-          background: 'linear-gradient(180deg, #16283f 0%, #0f1e33 100%)',
-          color: 'var(--text-on-ink)',
-          display: 'flex',
-          flexDirection: 'column',
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
-          boxShadow: '2px 0 12px rgba(15, 30, 51, 0.15)',
-          zIndex: 100,
-        }}
-      >
-        {/* Brand Header — Giống hệt màn hình Login */}
-        <div style={{ padding: '22px 18px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <div
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 20,
-              fontWeight: 800,
-              letterSpacing: '-0.02em',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
+      <aside className="app-sidebar">
+        {/* Brand Header */}
+        <div className="app-sidebar-brand">
+          <div className="app-sidebar-logo">
             <span style={{ color: 'var(--amber)', fontSize: 22, lineHeight: 1 }}>◈</span> KhoVận
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-on-ink-muted)', marginTop: 3, fontWeight: 500 }}>
@@ -57,7 +33,7 @@ export default function Layout() {
         </div>
 
         {/* Vertical Nav List */}
-        <nav style={{ flex: 1, padding: '14px 10px', overflowY: 'auto' }}>
+        <nav className="app-sidebar-nav">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
@@ -71,13 +47,13 @@ export default function Layout() {
                 borderRadius: 'var(--radius-sm)',
                 fontSize: 13.5,
                 fontWeight: isActive ? 700 : 500,
-                marginBottom: 3,
+                marginBottom: 4,
                 textDecoration: 'none',
-                color: isActive ? 'var(--amber-ink)' : 'var(--text-on-ink-muted)',
+                color: isActive ? '#ffffff' : '#94a3b8',
                 background: isActive
-                  ? 'linear-gradient(135deg, #f5b041 0%, #e89b25 100%)'
+                  ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
                   : 'transparent',
-                boxShadow: isActive ? '0 2px 10px rgba(242, 169, 59, 0.35)' : 'none',
+                boxShadow: isActive ? '0 2px 10px rgba(37, 99, 235, 0.4)' : 'none',
                 transform: isActive ? 'translateX(3px)' : 'none',
                 transition: 'all 0.16s ease',
               })}
@@ -88,87 +64,64 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Sidebar Footer — User & Logout */}
-        <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.1)' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', marginBottom: 2 }}>
-            {user?.full_name || user?.username}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-on-ink-muted)', marginBottom: 10, fontWeight: 500 }}>
-            {user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kho'}
-          </div>
-          <button
-            onClick={logout}
-            className="btn btn-ghost btn-sm"
-            style={{
-              width: '100%',
-              color: 'var(--text-on-ink-muted)',
-              borderColor: 'rgba(255,255,255,0.2)',
-              background: 'transparent',
-              justifyContent: 'center',
-              fontSize: 12,
-            }}
-          >
-            Đăng xuất
-          </button>
+        {/* Sidebar Copyright Info */}
+        <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 11, color: 'var(--text-on-ink-muted)', textAlign: 'center' }}>
+          KhoVận v2.0 · Sẵn sàng
         </div>
       </aside>
 
       {/* ========================================================================= */}
-      {/* 2. MAIN WORKSPACE (Thanh Header trên + Nội dung)                         */}
+      {/* 2. MAIN WORKSPACE (Header + Main + Footer)                                */}
       {/* ========================================================================= */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <header
-          style={{
-            background: '#ffffff',
-            borderBottom: '1px solid #e2e8f0',
-            padding: '12px 28px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            position: 'sticky',
-            top: 0,
-            zIndex: 40,
-            boxShadow: '0 1px 3px rgba(15, 30, 51, 0.02)',
-          }}
-        >
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ color: 'var(--amber)', fontSize: 16 }}>◈</span>
+      <div className="app-content">
+        <header className="app-header">
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span style={{ color: 'var(--primary)', fontSize: 16 }}>◈</span>
             <span>KhoVận Logistics · Quản lý xuất nhập tồn chuyên nghiệp</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
               style={{
                 fontSize: 12,
                 color: 'var(--text-muted)',
                 background: '#f1f5f9',
-                border: '1px solid #e2e8f0',
-                padding: '3px 9px',
-                borderRadius: 4,
+                border: '1px solid #cbd5e1',
+                padding: '5px 11px',
+                borderRadius: 6,
                 fontWeight: 600,
+                fontFamily: 'var(--font-mono)',
               }}
             >
-              📅 {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+              📅 {(() => {
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+                return `${days[now.getDay()]}, ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+              })()}
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text)' }}>
-              Xin chào, <strong style={{ color: 'var(--ink)' }}>{user?.full_name || user?.username}</strong>
-            </div>
+
+            {/* 👤 Dropdown User Menu */}
+            <UserDropdown />
           </div>
         </header>
 
         {/* Content Outlet */}
-        <main
-          style={{
-            flex: 1,
-            padding: '24px 32px 64px',
-            maxWidth: 1600,
-            width: '100%',
-            margin: '0 auto',
-          }}
-        >
+        <main className="app-main">
           <Outlet />
         </main>
+
+        {/* Footer */}
+        <footer className="app-footer">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>◈ KhoVận Logistics</span>
+            <span>—</span>
+            <span>Hệ thống quản lý xuất nhập tồn chuyên nghiệp</span>
+          </div>
+          <div style={{ fontWeight: 600, color: 'var(--ink)' }}>
+            © {new Date().getFullYear()} Bản quyền thuộc Nguyễn Đình Hùng
+          </div>
+        </footer>
       </div>
     </div>
   );

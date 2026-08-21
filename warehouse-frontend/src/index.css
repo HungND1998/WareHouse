@@ -3,36 +3,56 @@
    Đồng bộ nhận diện với màn hình Đăng nhập (Login)
    ============================================================ */
 :root {
-  /* Màu nền / cấu trúc */
-  --ink: #0f1e33;          /* Navy đậm sâu — Sidebar, tiêu đề, nhận diện */
-  --ink-2: #1e3a5f;        /* Navy sáng hơn 1 nấc */
-  --paper: #f8fafc;        /* Nền trang canvas: sáng sủa, sạch sẽ */
+  /* Màu nền / canvas — Tông Slate nhạt giúp các thẻ Card trắng nổi bật rõ rệt */
+  --ink: #0f172a;          /* Slate 900 đậm sâu — Tiêu đề, chữ chính */
+  --ink-2: #1e293b;        /* Slate 800 */
+  --paper: #f1f5f9;        /* Nền trang canvas dịu mắt, tương phản cao */
   --surface: #ffffff;      /* Nền card trắng */
-  --line: #e2e8f0;         /* Viền nhẹ mượt mà */
-  --line-strong: #cbd5e1;
+  --line: #e2e8f0;         /* Viền card chuẩn rõ nét */
+  --line-strong: #cbd5e1;  /* Viền input, table header đậm rõ ràng */
 
-  /* Chữ */
-  --text: #0f172a;
-  --text-muted: #475569;
-  --text-faint: #94a3b8;
+  /* Chữ — Tương phản cao, dễ đọc, chuẩn WCAG AAA */
+  --text: #0f172a;         /* Đen xám đậm rõ nét */
+  --text-muted: #334155;   /* Slate 700 — Tiêu đề phụ, nhãn chỉ số */
+  --text-faint: #64748b;   /* Slate 500 — Ghi chú, ngày giờ, số thứ tự (rõ ràng, không bị mờ) */
   --text-on-ink: #ffffff;
   --text-on-ink-muted: #94a3b8;
 
-  /* Accent — Vàng an toàn kho vận (Chuẩn màu Login & Buttons) */
-  --amber: #f2a93b;
-  --amber-dark: #d68f24;
-  --amber-light: #fef3c7;
-  --amber-ink: #3b2403;
+  /* Accent — Màu chủ đạo thương hiệu */
+  --primary: #2563eb;      /* Xanh Royal Blue hiện đại, tin cậy */
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --primary-border: #bfdbfe;
 
-  /* Trạng thái */
-  --ok: #16a34a;
+  --amber: #f59e0b;
+  --amber-dark: #d97706;
+  --amber-light: #fef3c7;
+  --amber-ink: #ffffff;
+
+  /* 4 Hệ màu trạng thái chuẩn theo quy định hệ thống */
+  /* 1. Bình thường -> Xanh lá (Success / OK / Tồn kho an toàn) */
+  --ok: #15803d;
   --ok-bg: #f0fdf4;
-  --warn: #dc2626;
-  --warn-bg: #fef2f2;
+  --ok-border: #bbf7d0;
+
+  /* 2. Thông tin -> Xanh dương (Info / Chứng từ / Thông số) */
   --info: #0284c7;
   --info-bg: #f0f9ff;
+  --info-border: #bae6fd;
+
+  /* 3. Cảnh báo -> Cam (Warning / Sắp hết hàng / Lưu ý) */
+  --warn: #d97706;
+  --warn-bg: #fffbeb;
+  --warn-border: #fde68a;
+
+  /* 4. Nguy hiểm -> Đỏ (Danger / Hết hàng / Lỗi hệ thống) */
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+
   --purple: #7c3aed;
-  --purple-bg: #ede9fe;
+  --purple-bg: #faf5ff;
+  --purple-border: #e9d5ff;
 
   /* Typography */
   --font-display: 'Plus Jakarta Sans', 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -41,10 +61,10 @@
 
   /* Layout */
   --sidebar-w: 240px;
-  --radius: 8px;
-  --radius-sm: 5px;
-  --shadow-sm: 0 1px 3px 0 rgba(15, 30, 51, 0.04), 0 1px 2px -1px rgba(15, 30, 51, 0.02);
-  --shadow-md: 0 4px 18px rgba(15, 30, 51, 0.09), 0 2px 6px rgba(15, 30, 51, 0.04);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 20px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.04);
 }
 
 * { box-sizing: border-box; }
@@ -63,8 +83,8 @@ body {
   color: var(--text);
   font-family: var(--font-body);
   font-size: 13.5px;
-  line-height: 1.58;
-  letter-spacing: -0.006em;
+  line-height: 1.62;
+  letter-spacing: 0.012em;
   font-feature-settings: 'cv11', 'tnum';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -73,28 +93,29 @@ body {
 h1, h2, h3, h4 {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
+  letter-spacing: 0.008em;
+  line-height: 1.35;
   margin: 0;
   color: var(--ink);
 }
 
-h1 { font-size: 22px; }
-h2 { font-size: 18px; }
-h3 { font-size: 15px; font-weight: 600; }
-h4 { font-size: 13.5px; font-weight: 600; }
+h1 { font-size: 22px; letter-spacing: 0.01em; }
+h2 { font-size: 18px; letter-spacing: 0.01em; }
+h3 { font-size: 15px; font-weight: 600; letter-spacing: 0.008em; }
+h4 { font-size: 13.5px; font-weight: 600; letter-spacing: 0.008em; }
 
 a { color: inherit; text-decoration: none; }
 
 button {
   font-family: inherit;
   cursor: pointer;
+  letter-spacing: 0.01em;
 }
 
 input, select, textarea {
   font-family: var(--font-body);
   font-size: 13.5px;
-  letter-spacing: -0.005em;
+  letter-spacing: 0.01em;
 }
 
 :focus-visible {
@@ -105,6 +126,7 @@ input, select, textarea {
 code, .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* ---------- Scrollbar tối giản ---------- */
