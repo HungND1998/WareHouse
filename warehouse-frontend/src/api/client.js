@@ -1,7 +1,6 @@
-const rawUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').trim();
+const rawUrl = (import.meta.env.VITE_API_URL || 'https://warehouse-wvbb.onrender.com/api').trim();
 const cleanUrl = rawUrl.replace(/\/+$/, '');
 const BASE_URL = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
-
 
 function getToken() {
   return localStorage.getItem('khovan_token') || sessionStorage.getItem('khovan_token');
@@ -28,6 +27,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (netErr) {
+    console.error('❌ Lỗi kết nối API tới URL:', url, netErr);
     throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend server (nếu dùng Render Free có thể cần 30-50s để khởi động lại).');
   }
 
