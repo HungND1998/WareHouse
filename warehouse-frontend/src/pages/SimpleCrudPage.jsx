@@ -7,6 +7,7 @@ import StatCard from '../components/StatCard';
 import TableState from '../components/TableState';
 import Pagination from '../components/Pagination';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { exportToExcel } from '../utils/excelExport';
 
 /**
  * Trang CRUD chung cho các bảng đơn giản: categories, suppliers, warehouses.
@@ -199,6 +200,26 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
     };
   }, [resource, rows, title, eyebrow]);
 
+  function handleExportExcel() {
+    const exportDataRows = filteredRows.length > 0 ? filteredRows : rows;
+    if (exportDataRows.length === 0) return push('Không có dữ liệu để xuất.', 'error');
+    const headers = fields.map((f) => f.label);
+    const data = exportDataRows.map((r) => fields.map((f) => r[f.key] ?? ''));
+    const dateStr = new Date().toISOString().slice(0, 10);
+    exportToExcel({
+      filename: `Danh_sach_${resource}_${dateStr}`,
+      sheetName: title,
+      title: `DANH SÁCH ${title.toUpperCase()}`,
+      subtitleInfo: [
+        `Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`,
+        `Tổng số bản ghi: ${exportDataRows.length}`,
+      ],
+      headers,
+      data,
+    });
+    push(`Đã xuất file Excel ${title.toLowerCase()} thành công!`);
+  }
+
   return (
     <div>
       {/* Page Header */}
@@ -207,9 +228,14 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
           <div className="eyebrow">{eyebrow}</div>
           <h1>{title}</h1>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
-          <span>+</span> Thêm {title.toLowerCase()}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-excel" onClick={handleExportExcel} title="Tải file Excel (.xlsx)">
+            <span>📊</span> Xuất excel
+          </button>
+          <button className="btn btn-primary" onClick={openCreate}>
+            <span>+</span> Thêm {title.toLowerCase()}
+          </button>
+        </div>
       </div>
 
       {/* Stats Row */}

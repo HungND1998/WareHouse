@@ -8,6 +8,7 @@ import StatCard from '../components/StatCard';
 import TableState from '../components/TableState';
 import Pagination from '../components/Pagination';
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import { exportToExcel } from '../utils/excelExport';
 
 const EMPTY_FORM = {
   sku: '',
@@ -155,23 +156,29 @@ export default function Products() {
 
   function handleExportExcel() {
     if (rows.length === 0) return push('Không có dữ liệu để xuất.', 'error');
-    const header = ['Mã SKU', 'Tên sản phẩm', 'Danh mục', 'Giá vốn (đ)', 'Giá bán (đ)', 'Tồn kho', 'Đơn vị'];
-    const lines = rows.map((p) => [
-      `"${p.sku}"`,
-      `"${p.name}"`,
-      `"${p.category_name || ''}"`,
-      p.cost_price || 0,
-      p.sale_price || 0,
-      p.total_stock || 0,
-      `"${p.unit || ''}"`,
-    ].join(','));
-    const csv = '\uFEFF' + [header.join(','), ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Danh_sach_san_pham_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    push('Đã xuất file dữ liệu thành công!');
+    const headers = ['Mã SKU', 'Tên sản phẩm', 'Danh mục', 'Giá vốn (đ)', 'Giá bán (đ)', 'Tồn kho', 'Đơn vị'];
+    const data = rows.map((p) => [
+      p.sku || '',
+      p.name || '',
+      p.category_name || '',
+      Number(p.cost_price) || 0,
+      Number(p.sale_price) || 0,
+      Number(p.total_stock) || 0,
+      p.unit || '',
+    ]);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    exportToExcel({
+      filename: `Danh_sach_san_pham_${dateStr}`,
+      sheetName: 'Sản phẩm',
+      title: 'BÁO CÁO DANH SÁCH SẢN PHẨM',
+      subtitleInfo: [
+        `Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`,
+        `Tổng số lượng mặt hàng: ${rows.length} sản phẩm`,
+      ],
+      headers,
+      data,
+    });
+    push('Đã xuất file Excel danh sách sản phẩm thành công!');
   }
 
   return (

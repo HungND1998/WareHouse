@@ -19,11 +19,16 @@ async function request(path, { method = 'GET', body, params } = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (netErr) {
+    throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend server đã được chạy chưa (port 4000).');
+  }
 
   let data;
   try {

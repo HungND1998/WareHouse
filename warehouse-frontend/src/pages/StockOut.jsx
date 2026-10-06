@@ -7,6 +7,7 @@ import StockDocumentDetailModal from '../components/StockDocumentDetailModal';
 import StatCard from '../components/StatCard';
 import TableState from '../components/TableState';
 import Pagination from '../components/Pagination';
+import { exportToExcel } from '../utils/excelExport';
 
 export default function StockOut() {
   const { push } = useToast();
@@ -89,23 +90,30 @@ export default function StockOut() {
   }, [rows]);
 
   function handleExportExcel() {
-    if (rows.length === 0) return push('Không có dữ liệu để xuất.', 'error');
-    const header = ['Mã phiếu', 'Kho xuất', 'Khách hàng', 'Người tạo', 'Tổng tiền (đ)', 'Thời gian'];
-    const lines = rows.map((r) => [
-      `"${r.code}"`,
-      `"${r.warehouse_name || ''}"`,
-      `"${r.customer_name || ''}"`,
-      `"${r.created_by || ''}"`,
-      r.total_amount || 0,
-      `"${r.created_at || ''}"`,
-    ].join(','));
-    const csv = '\uFEFF' + [header.join(','), ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Danh_sach_phieu_xuat_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    push('Đã xuất file dữ liệu phiếu xuất thành công!');
+    const exportDataRows = filteredRows.length > 0 ? filteredRows : rows;
+    if (exportDataRows.length === 0) return push('Không có dữ liệu để xuất.', 'error');
+    const headers = ['Mã phiếu', 'Kho xuất', 'Khách hàng', 'Người tạo', 'Tổng tiền (đ)', 'Thời gian'];
+    const data = exportDataRows.map((r) => [
+      r.code || '',
+      r.warehouse_name || '',
+      r.customer_name || '',
+      r.created_by || '',
+      Number(r.total_amount) || 0,
+      r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+    ]);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    exportToExcel({
+      filename: `Danh_sach_phieu_xuat_${dateStr}`,
+      sheetName: 'Phiếu xuất kho',
+      title: 'DANH SÁCH PHIẾU XUẤT KHO',
+      subtitleInfo: [
+        `Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`,
+        `Tổng số phiếu: ${exportDataRows.length} phiếu`,
+      ],
+      headers,
+      data,
+    });
+    push('Đã xuất file Excel danh sách phiếu xuất thành công!');
   }
 
   return (

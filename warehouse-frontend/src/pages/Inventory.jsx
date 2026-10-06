@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast';
 import StatCard from '../components/StatCard';
 import TableState from '../components/TableState';
 import Pagination from '../components/Pagination';
+import { exportToExcel } from '../utils/excelExport';
 
 export default function Inventory() {
   const { push } = useToast();
@@ -69,13 +70,52 @@ export default function Inventory() {
     return { totalLines, totalUnits, zeroStock };
   }, [rows]);
 
+  function handleExportExcel() {
+    const exportDataRows = filteredRows.length > 0 ? filteredRows : rows;
+    if (exportDataRows.length === 0) return push('Không có dữ liệu để xuất.', 'error');
+    const headers = ['Mã SKU', 'Tên sản phẩm', 'Kho hàng', 'Số lượng tồn', 'Đơn vị', 'Cập nhật lần cuối'];
+    const data = exportDataRows.map((r) => [
+      r.sku || '',
+      r.product_name || '',
+      r.warehouse_name || '',
+      Number(r.quantity) || 0,
+      r.unit || '',
+      r.updated_at ? new Date(r.updated_at).toLocaleString('vi-VN') : '',
+    ]);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const selectedWarehouse = warehouseId
+      ? warehouses.find((w) => String(w.id) === String(warehouseId))?.name || 'Đã chọn kho'
+      : 'Tất cả các kho';
+    exportToExcel({
+      filename: `Bao_cao_ton_kho_${dateStr}`,
+      sheetName: 'Tồn kho',
+      title: 'BÁO CÁO TỒN KHO THEO VỊ TRÍ',
+      subtitleInfo: [
+        `Thời gian xuất: ${new Date().toLocaleString('vi-VN')}`,
+        `Kho hàng: ${selectedWarehouse}`,
+        `Tổng số mục hàng: ${exportDataRows.length} mặt hàng`,
+      ],
+      headers,
+      data,
+    });
+    push('Đã xuất file Excel dữ liệu tồn kho thành công!');
+  }
+
   return (
     <div>
       {/* Page Header */}
       <div className="page-header">
-        <div>
-          <div className="eyebrow">Quản lý kho vận · Tồn kho</div>
-          <h1>Tồn kho theo vị trí</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 20 }}>📦</span>
+          <div>
+            <div className="eyebrow">Quản lý kho vận · Tồn kho</div>
+            <h1>Tồn kho theo vị trí</h1>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn btn-excel" onClick={handleExportExcel} title="Tải file Excel (.xlsx)">
+            <span>📊</span> Xuất excel
+          </button>
         </div>
       </div>
 
