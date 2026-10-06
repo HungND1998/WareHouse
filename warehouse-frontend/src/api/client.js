@@ -1,6 +1,7 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-console.log('VITE_API_URL =', import.meta.env.VITE_API_URL);
-console.log('BASE_URL =', BASE_URL);
+const rawUrl = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').trim();
+const cleanUrl = rawUrl.replace(/\/+$/, '');
+const BASE_URL = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+
 
 function getToken() {
   return localStorage.getItem('khovan_token') || sessionStorage.getItem('khovan_token');
@@ -27,7 +28,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (netErr) {
-    throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend server đã được chạy chưa (port 4000).');
+    throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra backend server (nếu dùng Render Free có thể cần 30-50s để khởi động lại).');
   }
 
   let data;
