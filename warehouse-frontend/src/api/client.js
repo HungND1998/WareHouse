@@ -1,6 +1,8 @@
-const rawUrl = (import.meta.env.VITE_API_URL || 'https://warehouse-wvbb.onrender.com/api').trim();
-const cleanUrl = rawUrl.replace(/\/+$/, '');
+import { CONFIG } from '../config';
+
+const cleanUrl = CONFIG.API_URL.replace(/\/+$/, '');
 const BASE_URL = cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+
 
 function getToken() {
   return localStorage.getItem('khovan_token') || sessionStorage.getItem('khovan_token');
