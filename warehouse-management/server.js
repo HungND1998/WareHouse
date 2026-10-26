@@ -25,6 +25,9 @@ app.use('/api/stock-in', require('./src/routes/stockIn.routes'));
 app.use('/api/stock-out', require('./src/routes/stockOut.routes'));
 app.use('/api/inventory', require('./src/routes/inventory.routes'));
 app.use('/api/reports', require('./src/routes/reports.routes'));
+app.use('/api/users', require('./src/routes/users.routes'));
+app.use('/api/roles', require('./src/routes/roles.routes'));
+app.use('/api/notifications', require('./src/routes/notifications.routes'));
 
 // 404
 app.use((req, res) => {

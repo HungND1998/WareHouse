@@ -11,12 +11,12 @@ import React from 'react';
  */
 export default function Pagination({
   page = 1,
-  pageSize = 20,
+  pageSize = 10,
   total = 0,
   onPageChange,
   onPageSizeChange,
-  pageSizeOptions = [10, 20, 50, 100],
-  hideOnSinglePage = true,
+  pageSizeOptions = [5, 10, 20, 50, 100],
+  hideOnSinglePage = false,
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(Math.max(1, page), totalPages);
@@ -24,7 +24,7 @@ export default function Pagination({
   const startRecord = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endRecord = Math.min(currentPage * pageSize, total);
 
-  // Ẩn toàn bộ thanh phân trang nếu không có dữ liệu hoặc dữ liệu chỉ nằm trong 1 trang
+  // Ẩn thanh phân trang nếu không có dữ liệu
   if (total === 0 || (hideOnSinglePage && total <= pageSize)) return null;
 
   // Generate page numbers with ellipsis
@@ -45,6 +45,9 @@ export default function Pagination({
     <div className="pagination-bar">
       <div className="pagination-info">
         Hiển thị <strong>{startRecord}</strong>–<strong>{endRecord}</strong> trên tổng số <strong>{total}</strong> bản ghi
+        <span style={{ marginLeft: 8, color: 'var(--text-faint)', fontSize: 12 }}>
+          (Trang <strong>{currentPage}</strong>/{totalPages})
+        </span>
       </div>
 
       <div className="pagination-controls">

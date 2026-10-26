@@ -21,10 +21,12 @@ export default function StatCard({ label, value, icon, color = 'blue', subtext, 
       <div className="stat-value" style={valueStyle}>
         {value}
       </div>
-      <div className="stat-tile-bottom">
-        {subtext && <div className="stat-subtext" style={{ margin: 0 }}>{subtext}</div>}
-        {(to || onClick) && <div className="stat-arrow">Chi tiết →</div>}
-      </div>
+      {(subtext || to || onClick) && (
+        <div className="stat-tile-bottom">
+          {subtext && <div className="stat-subtext" style={{ margin: 0 }}>{subtext}</div>}
+          {(to || onClick) && <div className="stat-arrow">Chi tiết →</div>}
+        </div>
+      )}
     </>
   );
 

@@ -6,6 +6,7 @@
     "warehouse-management"
   ],
   "scripts": {
+    "dev": "npm run dev:frontend",
     "dev:frontend": "npm run dev --prefix warehouse-frontend",
     "dev:backend": "npm run dev --prefix warehouse-management",
     "build:frontend": "npm run build --prefix warehouse-frontend"

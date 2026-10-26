@@ -13,17 +13,33 @@ import { exportToExcel } from '../utils/excelExport';
  * Trang CRUD chung cho các bảng đơn giản: categories, suppliers, warehouses.
  * fields: [{ key, label, type, required, placeholder }]
  */
-export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDelete = true }) {
-  const { user } = useAuth();
+export default function SimpleCrudPage({
+  resource,
+  eyebrow,
+  title,
+  fields,
+  canCreate,
+  canEdit,
+  canDelete,
+}) {
+  const { user, hasPerm } = useAuth();
   const { push } = useToast();
+  const isAdmin = user?.role === 'admin';
+
+  // Phân quyền linh hoạt theo module (ví dụ 'categories.create', 'warehouses.edit'...)
+  const isCreateAllowed = canCreate !== undefined ? canCreate : hasPerm(`${resource}.create`);
+  const isEditAllowed = canEdit !== undefined ? canEdit : hasPerm(`${resource}.edit`);
+  const isDeleteAllowed = canDelete !== undefined ? canDelete : hasPerm(`${resource}.delete`);
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [form, setForm] = useState({});
@@ -52,12 +68,18 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
   useEffect(load, [resource]);
 
   function openCreate() {
+    if (!isCreateAllowed) {
+      return push('Bạn không có quyền thêm mới dữ liệu này.', 'error');
+    }
     setEditing(null);
     setForm({});
     setModalOpen(true);
   }
 
   function openEdit(row) {
+    if (!isEditAllowed) {
+      return push('Bạn không có quyền chỉnh sửa dữ liệu này.', 'error');
+    }
     setEditing(row);
     setForm(row);
     setModalOpen(true);
@@ -65,6 +87,13 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (editing && !isEditAllowed) {
+      return push('Bạn không có quyền chỉnh sửa mục này.', 'error');
+    }
+    if (!editing && !isCreateAllowed) {
+      return push('Bạn không có quyền thêm mới mục này.', 'error');
+    }
+
     setSaving(true);
     try {
       if (editing) {
@@ -84,7 +113,9 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
   }
 
   async function confirmDelete() {
-    if (!deleting) return;
+    if (!deleting || !isDeleteAllowed) {
+      return push('Bạn không có quyền xóa mục này.', 'error');
+    }
     setDeleteLoading(true);
     try {
       await api.del(`/${resource}/${deleting.id}`);
@@ -232,9 +263,11 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
           <button className="btn btn-excel" onClick={handleExportExcel} title="Tải file Excel (.xlsx)">
             <span>📊</span> Xuất excel
           </button>
-          <button className="btn btn-primary" onClick={openCreate}>
-            <span>+</span> Thêm {title.toLowerCase()}
-          </button>
+          {isCreateAllowed && (
+            <button className="btn btn-primary" onClick={openCreate}>
+              <span>+</span> Thêm {title.toLowerCase()}
+            </button>
+          )}
         </div>
       </div>
 
@@ -319,7 +352,7 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
                 {fields.map((f) => (
                   <th key={f.key}>{f.label}</th>
                 ))}
-                <th style={{ width: 120, textAlign: 'right' }}>Thao tác</th>
+                <th style={{ width: 150, minWidth: 150, textAlign: 'right', whiteSpace: 'nowrap' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -329,39 +362,54 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
                 rows={filteredRows}
                 colSpan={fields.length + 2}
                 emptyIcon="📄"
-                emptyTitle={search ? `Không tìm thấy ${title.toLowerCase()} phù hợp` : `Chưa có ${title.toLowerCase()} nào`}
+                isFiltered={Boolean(search.trim())}
+                onClearFilter={() => setSearch('')}
+                emptyTitle={`Chưa có ${title.toLowerCase()} nào`}
                 emptySubtext={
-                  search
-                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm.'
-                    : `Bắt đầu thêm bản ghi ${title.toLowerCase()} đầu tiên vào hệ thống.`
+                  isCreateAllowed
+                    ? `Bắt đầu thêm bản ghi ${title.toLowerCase()} đầu tiên vào hệ thống.`
+                    : `Hệ thống chưa có dữ liệu ${title.toLowerCase()}.`
                 }
-                actionText={!search ? `+ Thêm ${title.toLowerCase()}` : undefined}
-                onAction={!search ? openCreate : undefined}
+                actionText={isCreateAllowed ? `+ Thêm ${title.toLowerCase()}` : undefined}
+                onAction={isCreateAllowed ? openCreate : undefined}
                 onRetry={load}
               />
               {!loading && !error && paginatedRows.map((row, idx) => (
                 <tr key={row.id}>
-                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 12.5, fontWeight: 600 }}>
+                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, fontWeight: 600 }}>
                     {(page - 1) * pageSize + idx + 1}
                   </td>
                   {fields.map((f, fIdx) => (
                     <td key={f.key}>
                       {fIdx === 0 ? (
-                        <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{row[f.key]}</strong>
+                        <strong style={{ color: 'var(--ink)', fontSize: 14.5 }}>{row[f.key]}</strong>
                       ) : (
                         row[f.key] || <span className="text-faint">—</span>
                       )}
                     </td>
                   ))}
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(row)} style={{ marginRight: 6 }}>
-                      ✏️ Sửa
-                    </button>
-                    {canDelete && user?.role === 'admin' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => setDeleting(row)}>
-                        🗑️ Xóa
-                      </button>
-                    )}
+                    <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                      {isEditAllowed && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(row)}>
+                          ✏️ Sửa
+                        </button>
+                      )}
+                      {isDeleteAllowed && (
+                        <button className="btn btn-danger btn-sm" onClick={() => setDeleting(row)}>
+                          🗑️ Xóa
+                        </button>
+                      )}
+                      {!isEditAllowed && !isDeleteAllowed && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => setViewing(row)}
+                          style={{ padding: '4px 10px', fontSize: 12, fontWeight: 600 }}
+                        >
+                          👁️ Chi tiết
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -377,7 +425,8 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
             setPageSize(newSize);
             setPage(1);
           }}
-          pageSizeOptions={[20, 50, 100]}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+          hideOnSinglePage={false}
         />
       </div>
 
@@ -449,6 +498,52 @@ export default function SimpleCrudPage({ resource, eyebrow, title, fields, canDe
         onClose={() => setDeleting(null)}
         loading={deleteLoading}
       />
+
+      {/* View Details Modal for Read-Only roles (Staff) */}
+      {viewing && (
+        <Modal
+          title={`Chi tiết: ${viewing.name || viewing[fields[0]?.key] || ''}`}
+          wide={560}
+          onClose={() => setViewing(null)}
+          footer={
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={() => setViewing(null)}>
+                Đóng
+              </button>
+            </div>
+          }
+        >
+          <div className="form-card" style={{ marginBottom: 0 }}>
+            <div className="form-card-title">
+              <span>Thông tin {title.toLowerCase()}</span>
+              <span className="tag" style={{ background: '#f1f5f9', color: '#475569' }}>CHẾ ĐỘ XEM</span>
+            </div>
+
+            {fields.map((f) => (
+              <div className="field" key={f.key} style={{ marginBottom: 14 }}>
+                <label style={{ color: 'var(--text-muted)' }}>{f.label}</label>
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    padding: '9px 12px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    fontSize: 13.5,
+                    color: 'var(--ink)',
+                    fontWeight: 500,
+                    minHeight: f.type === 'textarea' ? 64 : 38,
+                    display: 'flex',
+                    alignItems: 'center',
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {viewing[f.key] || <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

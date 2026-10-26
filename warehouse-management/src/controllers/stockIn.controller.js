@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const generateCode = require('../utils/generateCode');
+const { createNotification } = require('../utils/notification');
 
 // GET /api/stock-in
 const getAll = asyncHandler(async (req, res) => {
@@ -89,6 +90,17 @@ const create = asyncHandler(async (req, res) => {
 
   const stockInId = runTransaction();
   const header = db.prepare('SELECT * FROM stock_in WHERE id = ?').get(stockInId);
+
+  createNotification({
+    type: 'stock_in',
+    action: 'create',
+    title: 'Tạo phiếu nhập kho mới',
+    message: `Phiếu nhập "${code}" (${items.length} sản phẩm, tổng ${new Intl.NumberFormat('vi-VN').format(total_amount)} đ) vừa được tạo và cập nhật tồn kho.`,
+    link: '/stock-in',
+    entity_id: stockInId,
+    actor: req.user,
+  });
+
   res.status(201).json({ success: true, data: header });
 });
 

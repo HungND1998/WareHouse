@@ -14,19 +14,22 @@ export function formatNumber(n) {
 }
 
 /**
- * Chuyển đổi timestamp / ISO string thành đối tượng Date hợp lệ
+ * Chuyển đổi timestamp / ISO string từ SQLite/API thành đối tượng Date chuẩn
  */
 function parseDate(s) {
   if (!s) return null;
   if (s instanceof Date) return s;
   const str = String(s).trim();
-  const parsed = new Date(str.includes('T') ? str : str.replace(' ', 'T') + 'Z');
-  return isNaN(parsed.getTime()) ? new Date(str) : parsed;
+  // Nếu đã có ký hiệu múi giờ (Z hoặc +07:00 / -05:00) thì giữ nguyên, ngược lại mặc định là UTC từ server
+  const hasTimezone = /[Zz]$|[+-]\d{2}(:\d{2})?$/.test(str);
+  const isoStr = str.replace(' ', 'T') + (hasTimezone ? '' : 'Z');
+  const d = new Date(isoStr);
+  return isNaN(d.getTime()) ? new Date(str) : d;
 }
 
 /**
  * Định dạng ngày giờ chuẩn thống nhất toàn hệ thống: DD/MM/YYYY HH:mm
- * Ví dụ: "20/08/2026 08:56"
+ * Ví dụ: "26/10/2026 14:15"
  */
 export function formatDateTime(s) {
   const d = parseDate(s);
@@ -46,7 +49,7 @@ export function formatDate(s) {
 
 /**
  * Tính toán thời gian tương đối
- * Ví dụ: "vừa xong", "5 phút trước", "2 giờ trước", "1 ngày trước", "3 ngày trước"
+ * Ví dụ: "vừa xong", "5 phút trước", "2 giờ trước", "1 ngày trước"
  */
 export function getRelativeTime(s) {
   const d = parseDate(s);
@@ -61,7 +64,7 @@ export function getRelativeTime(s) {
   if (diffSec < 60) return 'vừa xong';
   if (diffMin < 60) return `${diffMin} phút trước`;
   if (diffHour < 24) return `${diffHour} giờ trước`;
-  if (diffDay === 1) return '1 ngày trước';
+  if (diffDay === 1) return 'hôm qua';
   if (diffDay < 30) return `${diffDay} ngày trước`;
   const diffMonth = Math.floor(diffDay / 30);
   if (diffMonth < 12) return `${diffMonth} tháng trước`;
@@ -69,20 +72,22 @@ export function getRelativeTime(s) {
 }
 
 /**
- * Component hiển thị ngày giờ chuẩn kèm tooltip tương đối khi hover
- * Ví dụ: Hiển thị "20/08/2026 08:56" và khi hover hiện "Cập nhật 1 ngày trước"
+ * Component hiển thị ngày giờ chuẩn kèm thời gian tương đối rõ ràng
  */
-export function DateTime({ value, prefix = 'Cập nhật' }) {
+export function DateTime({ value, prefix = 'Tạo lúc' }) {
   if (!value) return <span className="text-faint">—</span>;
   const formatted = formatDateTime(value);
   const relative = getRelativeTime(value);
   return (
-    <span
-      className="datetime-badge"
-      title={relative ? `${prefix} ${relative}` : formatted}
-      style={{ cursor: 'help' }}
-    >
-      {formatted}
-    </span>
+    <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 1 }}>
+      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+        {formatted}
+      </span>
+      {relative && (
+        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 500 }}>
+          {relative}
+        </span>
+      )}
+    </div>
   );
 }

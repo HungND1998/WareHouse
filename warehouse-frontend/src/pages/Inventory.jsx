@@ -16,7 +16,7 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -199,11 +199,12 @@ export default function Inventory() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 140 }}>Mã SKU</th>
-                <th>Tên sản phẩm</th>
-                <th>Kho hàng</th>
-                <th className="num" style={{ width: 140 }}>Số lượng tồn</th>
-                <th style={{ width: 180 }}>Cập nhật lần cuối</th>
+                <th style={{ width: 50, textAlign: 'center' }}>#</th>
+                <th style={{ width: 140, minWidth: 140 }}>Mã SKU</th>
+                <th style={{ minWidth: 240 }}>Tên sản phẩm</th>
+                <th style={{ width: 160, minWidth: 160 }}>Kho hàng</th>
+                <th className="num" style={{ width: 140, minWidth: 140 }}>Số lượng tồn</th>
+                <th style={{ width: 180, minWidth: 180 }}>Cập nhật lần cuối</th>
               </tr>
             </thead>
             <tbody>
@@ -211,28 +212,33 @@ export default function Inventory() {
                 loading={loading}
                 error={error}
                 rows={filteredRows}
-                colSpan={5}
-                emptyTitle={search || warehouseId ? 'Không tìm thấy sản phẩm phù hợp' : 'Chưa có dữ liệu tồn kho'}
-                emptySubtext={
-                  search || warehouseId
-                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc kho hàng đã chọn.'
-                    : 'Hãy tạo phiếu nhập kho để ghi nhận số lượng tồn kho đầu tiên.'
-                }
+                colSpan={6}
+                emptyIcon="📊"
+                isFiltered={Boolean(search.trim() || warehouseId)}
+                onClearFilter={() => {
+                  setSearch('');
+                  setWarehouseId('');
+                }}
+                emptyTitle="Chưa có dữ liệu tồn kho"
+                emptySubtext="Hãy tạo phiếu nhập kho để ghi nhận số lượng tồn kho đầu tiên."
                 onRetry={load}
               />
-              {!loading && !error && paginatedRows.map((r) => (
+              {!loading && !error && paginatedRows.map((r, idx) => (
                 <tr key={r.id}>
+                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, fontWeight: 600 }}>
+                    {(page - 1) * pageSize + idx + 1}
+                  </td>
                   <td>
                     <span className="sku-chip">{r.sku}</span>
                   </td>
                   <td>
-                    <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{r.product_name}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 14.5 }}>{r.product_name}</strong>
                   </td>
-                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{r.warehouse_name}</td>
-                  <td className="num" style={{ fontWeight: 800, fontSize: 14, color: r.quantity <= 0 ? 'var(--warn)' : 'var(--ink)' }}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>{r.warehouse_name}</td>
+                  <td className="num" style={{ fontWeight: 800, fontSize: 14.5, color: r.quantity <= 0 ? 'var(--warn)' : 'var(--ink)', whiteSpace: 'nowrap' }}>
                     {formatNumber(r.quantity)} {r.unit}
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <DateTime value={r.updated_at} prefix="Cập nhật" />
                   </td>
                 </tr>
@@ -249,7 +255,8 @@ export default function Inventory() {
             setPageSize(newSize);
             setPage(1);
           }}
-          pageSizeOptions={[20, 50, 100]}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+          hideOnSinglePage={false}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const generateCode = require('../utils/generateCode');
+const { createNotification } = require('../utils/notification');
 
 const getAll = asyncHandler(async (req, res) => {
   const rows = db
@@ -93,6 +94,17 @@ const create = asyncHandler(async (req, res) => {
 
   const stockOutId = runTransaction();
   const header = db.prepare('SELECT * FROM stock_out WHERE id = ?').get(stockOutId);
+
+  createNotification({
+    type: 'stock_out',
+    action: 'create',
+    title: 'Tạo phiếu xuất kho mới',
+    message: `Phiếu xuất "${code}" (${items.length} sản phẩm, tổng ${new Intl.NumberFormat('vi-VN').format(total_amount)} đ) vừa được tạo và trừ tồn kho.`,
+    link: '/stock-out',
+    entity_id: stockOutId,
+    actor: req.user,
+  });
+
   res.status(201).json({ success: true, data: header });
 });
 

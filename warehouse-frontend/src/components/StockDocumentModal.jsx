@@ -200,7 +200,7 @@ export default function StockDocumentModal({
   return (
     <Modal
       title={docTitle}
-      wide={880}
+      wide={1080}
       onClose={onClose}
       footer={
         <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -238,7 +238,7 @@ export default function StockDocumentModal({
             <span className="tag">MÃ TỰ ĐỘNG TẠO: {codePrefix}-…</span>
           </div>
 
-          <div className="grid-3">
+          <div className="grid-3" style={{ alignItems: 'flex-start' }}>
             <div className="field" style={{ marginBottom: 0 }}>
               <label>
                 {isIn ? 'Kho nhập hàng' : 'Kho xuất hàng'} <span style={{ color: 'var(--warn)' }}>*</span>
@@ -247,7 +247,7 @@ export default function StockDocumentModal({
                 value={warehouseId}
                 required
                 onChange={(e) => setWarehouseId(e.target.value)}
-                style={{ fontWeight: 600 }}
+                style={{ fontWeight: 600, height: 40, boxSizing: 'border-box' }}
               >
                 <option value="">— Chọn kho hàng —</option>
                 {warehouses.map((w) => (
@@ -261,7 +261,11 @@ export default function StockDocumentModal({
             <div className="field" style={{ marginBottom: 0 }}>
               <label>{isIn ? 'Nhà cung cấp' : 'Khách hàng / Đối tác'}</label>
               {isIn ? (
-                <select value={partnerValue} onChange={(e) => setPartnerValue(e.target.value)}>
+                <select
+                  value={partnerValue}
+                  onChange={(e) => setPartnerValue(e.target.value)}
+                  style={{ height: 40, boxSizing: 'border-box' }}
+                >
                   <option value="">— Chọn nhà cung cấp (nếu có) —</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -274,19 +278,32 @@ export default function StockDocumentModal({
                   value={partnerValue}
                   onChange={(e) => setPartnerValue(e.target.value)}
                   placeholder="VD: Cửa hàng ABC, Đại lý XYZ..."
+                  style={{ height: 40, boxSizing: 'border-box' }}
                 />
               )}
             </div>
 
             <div className="field" style={{ marginBottom: 0 }}>
               <label>Thời gian tạo</label>
-              <input
-                type="text"
-                readOnly
-                disabled
-                value={formatDateTime(new Date())}
-                style={{ background: '#eef0ec', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}
-              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  height: 40,
+                  padding: '0 12px',
+                  background: '#f8fafc',
+                  border: '1px solid var(--line-strong)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  color: 'var(--ink)',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>📅</span>
+                <span>{formatDateTime(new Date())}</span>
+              </div>
             </div>
           </div>
 
@@ -333,12 +350,12 @@ export default function StockDocumentModal({
             <table className="items-table">
               <thead>
                 <tr>
-                  <th className="row-num">#</th>
-                  <th style={{ minWidth: 260 }}>Sản phẩm / Mặt hàng</th>
+                  <th className="row-num" style={{ width: 36, textAlign: 'center' }}>#</th>
+                  <th style={{ minWidth: 400 }}>Sản phẩm / Mặt hàng</th>
                   <th style={{ width: 110, textAlign: 'center' }}>Tồn kho</th>
-                  <th style={{ width: 120 }}>{isIn ? 'Số lượng nhập' : 'Số lượng xuất'}</th>
+                  <th style={{ width: 110 }}>{isIn ? 'Số lượng nhập' : 'Số lượng xuất'}</th>
                   <th style={{ width: 140 }}>Đơn giá (đ)</th>
-                  <th style={{ width: 130, textAlign: 'right' }}>Thành tiền</th>
+                  <th style={{ width: 140, textAlign: 'right' }}>Thành tiền</th>
                   <th style={{ width: 44, textAlign: 'center' }}></th>
                 </tr>
               </thead>
@@ -354,15 +371,23 @@ export default function StockDocumentModal({
                   return (
                     <tr key={idx}>
                       {/* STT */}
-                      <td className="row-num">{idx + 1}</td>
+                      <td className="row-num" style={{ textAlign: 'center' }}>{idx + 1}</td>
 
                       {/* Chọn sản phẩm */}
                       <td>
                         <select
                           value={it.product_id}
                           onChange={(e) => updateItem(idx, { product_id: e.target.value })}
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 13,
+                            padding: '8px 10px',
+                            minWidth: 380,
+                            width: '100%',
+                            height: 38,
+                          }}
                         >
-                          <option value="">— Chọn sản phẩm —</option>
+                          <option value="">— Chọn sản phẩm / mặt hàng —</option>
                           {products.map((p) => {
                             const curStock = warehouseId ? (warehouseInventory[p.id] ?? 0) : p.total_stock;
                             return (
@@ -373,9 +398,9 @@ export default function StockDocumentModal({
                           })}
                         </select>
                         {prod && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 4, fontSize: 11.5, color: 'var(--text-faint)' }}>
-                            <span>Đơn vị: <strong>{prod.unit || 'cái'}</strong></span>
-                            {prod.category_name && <span>· Nhóm: <strong>{prod.category_name}</strong></span>}
+                          <div style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 11.5, color: 'var(--text-faint)' }}>
+                            <span>Đơn vị: <strong style={{ color: 'var(--ink)' }}>{prod.unit || 'cái'}</strong></span>
+                            {prod.category_name && <span>· Nhóm: <strong style={{ color: 'var(--ink)' }}>{prod.category_name}</strong></span>}
                           </div>
                         )}
                       </td>
@@ -387,11 +412,11 @@ export default function StockDocumentModal({
                         ) : !it.product_id ? (
                           <span className="text-faint" style={{ fontSize: 12 }}>—</span>
                         ) : stockAvailable > 0 ? (
-                          <span className={`stock-pill ${stockAvailable <= 5 ? 'low' : 'available'}`}>
+                          <span className={`stock-pill ${stockAvailable <= 5 ? 'low' : 'available'}`} style={{ padding: '3px 8px', fontSize: 12 }}>
                             {formatNumber(stockAvailable)} {prod?.unit || ''}
                           </span>
                         ) : (
-                          <span className="stock-pill empty">Hết hàng (0)</span>
+                          <span className="stock-pill empty" style={{ padding: '3px 8px', fontSize: 12 }}>Hết hàng (0)</span>
                         )}
                       </td>
 
@@ -405,7 +430,7 @@ export default function StockDocumentModal({
                             className={isOverStock ? 'is-invalid' : ''}
                             value={it.quantity}
                             onChange={(e) => updateItem(idx, { quantity: e.target.value })}
-                            style={{ fontWeight: 600 }}
+                            style={{ fontWeight: 700, height: 38, textAlign: 'center' }}
                           />
                           {!isIn && stockAvailable > 0 && (
                             <button
@@ -417,7 +442,7 @@ export default function StockDocumentModal({
                                 color: 'var(--info)',
                                 fontSize: 10.5,
                                 padding: '0 2px',
-                                textAlign: 'left',
+                                textAlign: 'center',
                                 cursor: 'pointer',
                                 textDecoration: 'underline',
                               }}
@@ -426,7 +451,7 @@ export default function StockDocumentModal({
                             </button>
                           )}
                           {isOverStock && (
-                            <span style={{ fontSize: 10.5, color: 'var(--warn)', fontWeight: 600 }}>
+                            <span style={{ fontSize: 10.5, color: 'var(--warn)', fontWeight: 600, textAlign: 'center' }}>
                               Vượt tồn ({stockAvailable})
                             </span>
                           )}
@@ -442,7 +467,7 @@ export default function StockDocumentModal({
                           placeholder="0"
                           value={it.price}
                           onChange={(e) => updateItem(idx, { price: e.target.value })}
-                          style={{ fontFamily: 'var(--font-mono)' }}
+                          style={{ fontFamily: 'var(--font-mono)', height: 38, textAlign: 'right', fontWeight: 600 }}
                         />
                         {price > 0 && (
                           <div style={{ fontSize: 10.5, color: 'var(--text-faint)', marginTop: 2, textAlign: 'right' }}>
@@ -453,7 +478,7 @@ export default function StockDocumentModal({
 
                       {/* Thành tiền */}
                       <td style={{ textAlign: 'right' }}>
-                        <strong className="mono" style={{ fontSize: 13, color: lineTotal > 0 ? 'var(--ink)' : 'var(--text-faint)' }}>
+                        <strong className="mono" style={{ fontSize: 13.5, color: lineTotal > 0 ? 'var(--ink)' : 'var(--text-faint)', fontWeight: 700 }}>
                           {formatMoney(lineTotal)}
                         </strong>
                       </td>
@@ -466,6 +491,16 @@ export default function StockDocumentModal({
                           onClick={() => removeRow(idx)}
                           title="Xóa dòng này"
                           disabled={items.length === 1 && !it.product_id && !it.price}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            fontSize: 13,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                          }}
                         >
                           ✕
                         </button>

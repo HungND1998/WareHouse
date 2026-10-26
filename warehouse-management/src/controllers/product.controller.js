@@ -1,5 +1,13 @@
 const db = require('../config/db');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
+const { createNotification } = require('../utils/notification');
+
+function canViewCost(user) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const row = db.prepare('SELECT 1 FROM role_permissions WHERE role_id = ? AND permission_id = ?').get(user.role, 'products.view_cost');
+  return Boolean(row);
+}
 
 // GET /api/products?search=&category_id=&page=1&limit=20
 const getAll = asyncHandler(async (req, res) => {
@@ -33,6 +41,13 @@ const getAll = asyncHandler(async (req, res) => {
 
   const total = db.prepare(`SELECT COUNT(*) AS c FROM products p ${where}`).get(...params).c;
 
+  const canSeeCost = canViewCost(req.user);
+  if (!canSeeCost) {
+    rows.forEach((p) => {
+      delete p.cost_price;
+    });
+  }
+
   res.json({ success: true, data: rows, pagination: { page: Number(page), limit: Number(limit), total } });
 });
 
@@ -50,6 +65,11 @@ const getOne = asyncHandler(async (req, res) => {
     )
     .all(req.params.id);
 
+  const canSeeCost = canViewCost(req.user);
+  if (!canSeeCost) {
+    delete product.cost_price;
+  }
+
   res.json({ success: true, data: { ...product, stockByWarehouse } });
 });
 
@@ -65,6 +85,17 @@ const create = asyncHandler(async (req, res) => {
     .run(sku, name, category_id || null, unit || 'cái', cost_price || 0, sale_price || 0, min_stock || 0, description || null);
 
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(info.lastInsertRowid);
+
+  createNotification({
+    type: 'product',
+    action: 'create',
+    title: 'Thêm sản phẩm mới',
+    message: `Sản phẩm "${product.name}" (SKU: ${product.sku}) vừa được thêm vào danh mục.`,
+    link: '/products',
+    entity_id: product.id,
+    actor: req.user,
+  });
+
   res.status(201).json({ success: true, data: product });
 });
 
@@ -77,6 +108,17 @@ const update = asyncHandler(async (req, res) => {
 
   db.prepare(`UPDATE products SET ${fields.map((f) => `${f} = ?`).join(', ')} WHERE id = ?`).run(...values, req.params.id);
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
+
+  createNotification({
+    type: 'product',
+    action: 'update',
+    title: 'Cập nhật sản phẩm',
+    message: `Sản phẩm "${product.name}" (SKU: ${product.sku}) vừa được cập nhật thông tin.`,
+    link: '/products',
+    entity_id: product.id,
+    actor: req.user,
+  });
+
   res.json({ success: true, data: product });
 });
 

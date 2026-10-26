@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useToast } from './Toast';
 import { api } from '../api/client';
@@ -9,6 +10,7 @@ import PasswordInput from './PasswordInput';
 export default function UserDropdown() {
   const { user, logout } = useAuth();
   const { push } = useToast();
+  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(false);
@@ -234,6 +236,68 @@ export default function UserDropdown() {
               <span>🔑</span>
               <span>Đổi mật khẩu</span>
             </button>
+
+            {user?.role === 'admin' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/users');
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--ink)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.12s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span>👥</span>
+                  <span>Quản lý người dùng</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate('/roles');
+                  }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '9px 12px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--ink)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.12s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <span>🛡️</span>
+                  <span>Phân quyền vai trò</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Logout button */}

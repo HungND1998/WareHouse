@@ -13,6 +13,8 @@ import StockOut from './pages/StockOut';
 import Categories from './pages/Categories';
 import Suppliers from './pages/Suppliers';
 import Warehouses from './pages/Warehouses';
+import Users from './pages/Users';
+import Roles from './pages/Roles';
 
 export default function App() {
   return (
@@ -37,6 +39,8 @@ export default function App() {
               <Route path="categories" element={<Categories />} />
               <Route path="suppliers" element={<Suppliers />} />
               <Route path="warehouses" element={<Warehouses />} />
+              <Route path="users" element={<Users />} />
+              <Route path="roles" element={<Roles />} />
             </Route>
           </Routes>
         </ToastProvider>

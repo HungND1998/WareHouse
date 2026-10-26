@@ -22,8 +22,14 @@ const EMPTY_FORM = {
 };
 
 export default function Products() {
-  const { user } = useAuth();
+  const { user, hasPerm } = useAuth();
   const { push } = useToast();
+  const isAdmin = user?.role === 'admin';
+  const canCreate = hasPerm('products.create');
+  const canEdit = hasPerm('products.edit');
+  const canDelete = hasPerm('products.delete');
+  const canViewCost = hasPerm('products.view_cost');
+
   const [rows, setRows] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
@@ -31,9 +37,10 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [viewingProduct, setViewingProduct] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -74,12 +81,18 @@ export default function Products() {
   }, [rows, page, pageSize]);
 
   function openCreate() {
+    if (!canCreate) {
+      return push('Bạn không có quyền thêm mới sản phẩm.', 'error');
+    }
     setEditing(null);
     setForm(EMPTY_FORM);
     setModalOpen(true);
   }
 
   function openEdit(row) {
+    if (!canEdit) {
+      return push('Bạn không có quyền chỉnh sửa sản phẩm.', 'error');
+    }
     setEditing(row);
     setForm({
       ...EMPTY_FORM,
@@ -93,8 +106,23 @@ export default function Products() {
     setModalOpen(true);
   }
 
+  async function openView(product) {
+    try {
+      const res = await api.get(`/products/${product.id}`);
+      setViewingProduct({ ...product, ...res.data });
+    } catch {
+      setViewingProduct(product);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
+    if (editing && !canEdit) {
+      return push('Bạn không có quyền cập nhật sản phẩm.', 'error');
+    }
+    if (!editing && !canCreate) {
+      return push('Bạn không có quyền thêm mới sản phẩm.', 'error');
+    }
     if (!form.sku || !form.name) {
       return push('Vui lòng điền đủ SKU và Tên sản phẩm.', 'error');
     }
@@ -128,7 +156,9 @@ export default function Products() {
   }
 
   async function confirmDelete() {
-    if (!deleting) return;
+    if (!deleting || !canDelete) {
+      return push('Bạn không có quyền xóa sản phẩm.', 'error');
+    }
     setDeleteLoading(true);
     try {
       await api.del(`/products/${deleting.id}`);
@@ -156,16 +186,29 @@ export default function Products() {
 
   function handleExportExcel() {
     if (rows.length === 0) return push('Không có dữ liệu để xuất.', 'error');
-    const headers = ['Mã SKU', 'Tên sản phẩm', 'Danh mục', 'Giá vốn (đ)', 'Giá bán (đ)', 'Tồn kho', 'Đơn vị'];
-    const data = rows.map((p) => [
-      p.sku || '',
-      p.name || '',
-      p.category_name || '',
-      Number(p.cost_price) || 0,
-      Number(p.sale_price) || 0,
-      Number(p.total_stock) || 0,
-      p.unit || '',
-    ]);
+    const headers = canViewCost
+      ? ['Mã SKU', 'Tên sản phẩm', 'Danh mục', 'Giá vốn (đ)', 'Giá bán (đ)', 'Tồn kho', 'Đơn vị']
+      : ['Mã SKU', 'Tên sản phẩm', 'Danh mục', 'Giá bán (đ)', 'Tồn kho', 'Đơn vị'];
+    const data = rows.map((p) =>
+      canViewCost
+        ? [
+            p.sku || '',
+            p.name || '',
+            p.category_name || '',
+            Number(p.cost_price) || 0,
+            Number(p.sale_price) || 0,
+            Number(p.total_stock) || 0,
+            p.unit || '',
+          ]
+        : [
+            p.sku || '',
+            p.name || '',
+            p.category_name || '',
+            Number(p.sale_price) || 0,
+            Number(p.total_stock) || 0,
+            p.unit || '',
+          ]
+    );
     const dateStr = new Date().toISOString().slice(0, 10);
     exportToExcel({
       filename: `Danh_sach_san_pham_${dateStr}`,
@@ -196,9 +239,11 @@ export default function Products() {
           <button className="btn btn-excel" onClick={handleExportExcel} title="Tải file Excel / CSV">
             <span>📊</span> Xuất excel
           </button>
-          <button className="btn btn-primary" onClick={openCreate}>
-            <span>+</span> Thêm mới
-          </button>
+          {canCreate && (
+            <button className="btn btn-primary" onClick={openCreate}>
+              <span>+</span> Thêm mới
+            </button>
+          )}
         </div>
       </div>
 
@@ -285,14 +330,15 @@ export default function Products() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 140 }}>Mã SKU</th>
-                <th>Tên sản phẩm</th>
-                <th>Danh mục</th>
-                <th className="num">Giá vốn</th>
-                <th className="num">Giá bán</th>
-                <th className="num">Tồn kho</th>
-                <th style={{ width: 120, whiteSpace: 'nowrap' }}>Trạng thái</th>
-                <th style={{ width: 120, textAlign: 'right', whiteSpace: 'nowrap' }}>Thao tác</th>
+                <th style={{ width: 50, textAlign: 'center' }}>#</th>
+                <th style={{ width: 130, minWidth: 120, whiteSpace: 'nowrap' }}>Mã SKU</th>
+                <th style={{ minWidth: 200 }}>Tên sản phẩm</th>
+                <th style={{ width: 170, minWidth: 160, whiteSpace: 'nowrap' }}>Danh mục</th>
+                {canViewCost && <th className="num" style={{ width: 130, minWidth: 120, whiteSpace: 'nowrap' }}>Giá vốn</th>}
+                <th className="num" style={{ width: 130, minWidth: 120, whiteSpace: 'nowrap' }}>Giá bán</th>
+                <th className="num" style={{ width: 120, minWidth: 110, whiteSpace: 'nowrap' }}>Tồn kho</th>
+                <th style={{ width: 130, minWidth: 120, whiteSpace: 'nowrap' }}>Trạng thái</th>
+                <th style={{ width: 150, minWidth: 150, textAlign: 'right', whiteSpace: 'nowrap' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -300,44 +346,65 @@ export default function Products() {
                 loading={loading}
                 error={error}
                 rows={rows}
-                colSpan={8}
+                colSpan={canViewCost ? 9 : 8}
                 emptyIcon="📦"
-                emptyTitle={search || categoryFilter ? 'Không tìm thấy sản phẩm phù hợp' : 'Chưa có sản phẩm nào trong kho'}
+                isFiltered={Boolean(search.trim() || categoryFilter)}
+                onClearFilter={() => {
+                  setSearch('');
+                  setCategoryFilter('');
+                }}
+                emptyTitle="Chưa có sản phẩm nào trong kho"
                 emptySubtext={
-                  search || categoryFilter
-                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc danh mục đã chọn.'
-                    : 'Bắt đầu thêm mặt hàng mới để quản lý tồn kho và giá bán.'
+                  canCreate
+                    ? 'Bắt đầu thêm mặt hàng mới để quản lý tồn kho và giá bán.'
+                    : 'Hệ thống hiện chưa ghi nhận sản phẩm nào.'
                 }
-                actionText={!search && !categoryFilter ? '+ Thêm sản phẩm mới' : undefined}
-                onAction={!search && !categoryFilter ? openCreate : undefined}
+                actionText={canCreate ? '+ Thêm sản phẩm mới' : undefined}
+                onAction={canCreate ? openCreate : undefined}
                 onRetry={load}
               />
-              {!loading && !error && paginatedRows.map((p) => (
+              {!loading && !error && paginatedRows.map((p, idx) => (
                 <tr key={p.id}>
-                  <td>
+                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, fontWeight: 600 }}>
+                    {(page - 1) * pageSize + idx + 1}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <span className="sku-chip">{p.sku}</span>
                   </td>
                   <td>
-                    <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{p.name}</strong>
+                    <strong style={{ color: 'var(--ink)', fontSize: 14.5 }}>{p.name}</strong>
                   </td>
-                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{p.category_name || '—'}</td>
-                  <td className="num">{formatMoney(p.cost_price)}</td>
-                  <td className="num" style={{ fontWeight: 600, color: 'var(--ink)' }}>{formatMoney(p.sale_price)}</td>
-                  <td className="num" style={{ fontWeight: 800, color: 'var(--ink)', fontSize: 14 }}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>{p.category_name || '—'}</td>
+                  {canViewCost && <td className="num" style={{ whiteSpace: 'nowrap' }}>{p.cost_price != null ? formatMoney(p.cost_price) : '—'}</td>}
+                  <td className="num" style={{ fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap' }}>{formatMoney(p.sale_price)}</td>
+                  <td className="num" style={{ fontWeight: 800, color: 'var(--ink)', fontSize: 14.5, whiteSpace: 'nowrap' }}>
                     {formatNumber(p.total_stock)} {p.unit}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <StockBadge quantity={p.total_stock} minStock={p.min_stock} />
                   </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)} style={{ marginRight: 6 }}>
-                      ✏️ Sửa
-                    </button>
-                    {user?.role === 'admin' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => setDeleting(p)}>
-                        🗑️ Xóa
-                      </button>
-                    )}
+                    <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                      {canEdit && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>
+                          ✏️ Sửa
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button className="btn btn-danger btn-sm" onClick={() => setDeleting(p)}>
+                          🗑️ Xóa
+                        </button>
+                      )}
+                      {!canEdit && !canDelete && (
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => openView(p)}
+                          style={{ padding: '4px 10px', fontSize: 12, fontWeight: 600 }}
+                        >
+                          👁️ Chi tiết
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -353,7 +420,8 @@ export default function Products() {
             setPageSize(newSize);
             setPage(1);
           }}
-          pageSizeOptions={[20, 50, 100]}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+          hideOnSinglePage={false}
         />
       </div>
 
@@ -528,6 +596,113 @@ export default function Products() {
         onClose={() => setDeleting(null)}
         loading={deleteLoading}
       />
+
+      {/* Product Detail Modal for Staff / Read-Only */}
+      {viewingProduct && (
+        <Modal
+          title={`Chi tiết sản phẩm: ${viewingProduct.name}`}
+          wide={680}
+          onClose={() => setViewingProduct(null)}
+          footer={
+            <div className="modal-actions">
+              <button type="button" className="btn btn-primary" onClick={() => setViewingProduct(null)}>
+                Đóng
+              </button>
+            </div>
+          }
+        >
+          <div className="form-card" style={{ marginBottom: 14 }}>
+            <div className="form-card-title">
+              <span>Thông tin định danh & giá</span>
+              <span className="tag" style={{ background: '#f1f5f9', color: '#475569' }}>CHẾ ĐỘ XEM</span>
+            </div>
+
+            <div className="grid-2">
+              <div className="field" style={{ marginBottom: 10 }}>
+                <label style={{ color: 'var(--text-muted)' }}>Mã SKU</label>
+                <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                  {viewingProduct.sku}
+                </div>
+              </div>
+              <div className="field" style={{ marginBottom: 10 }}>
+                <label style={{ color: 'var(--text-muted)' }}>Đơn vị tính</label>
+                <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, fontWeight: 600 }}>
+                  {viewingProduct.unit || 'cái'}
+                </div>
+              </div>
+            </div>
+
+            <div className="field" style={{ marginBottom: 10 }}>
+              <label style={{ color: 'var(--text-muted)' }}>Tên sản phẩm</label>
+              <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>
+                {viewingProduct.name}
+              </div>
+            </div>
+
+            <div className="grid-2">
+              <div className="field" style={{ marginBottom: 10 }}>
+                <label style={{ color: 'var(--text-muted)' }}>Danh mục hàng hóa</label>
+                <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, fontWeight: 500 }}>
+                  {viewingProduct.category_name || '—'}
+                </div>
+              </div>
+              <div className="field" style={{ marginBottom: 10 }}>
+                <label style={{ color: 'var(--text-muted)' }}>Giá bán niêm yết</label>
+                <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, fontWeight: 700, color: 'var(--ink)' }}>
+                  {formatMoney(viewingProduct.sale_price)}
+                </div>
+              </div>
+            </div>
+
+            {viewingProduct.description && (
+              <div className="field" style={{ marginTop: 4, marginBottom: 0 }}>
+                <label style={{ color: 'var(--text-muted)' }}>Mô tả sản phẩm</label>
+                <div style={{ padding: '8px 12px', background: '#f8fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                  {viewingProduct.description}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Phân bố tồn kho theo từng kho */}
+          <div className="form-card" style={{ marginBottom: 0 }}>
+            <div className="form-card-title">
+              <span>Tồn kho tại các cơ sở</span>
+              <span className="tag" style={{ background: 'var(--primary)', color: '#fff' }}>
+                Tổng: {formatNumber(viewingProduct.total_stock)} {viewingProduct.unit || 'cái'}
+              </span>
+            </div>
+
+            {viewingProduct.stockByWarehouse && viewingProduct.stockByWarehouse.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+                {viewingProduct.stockByWarehouse.map((w) => (
+                  <div
+                    key={w.warehouse_id}
+                    style={{
+                      padding: '10px 14px',
+                      background: '#f8fafc',
+                      borderRadius: 6,
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 600 }}>{w.warehouse_name}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: w.quantity > 0 ? 'var(--ink)' : 'var(--warn)' }}>
+                      {formatNumber(w.quantity)} <span style={{ fontSize: 12, fontWeight: 500 }}>{viewingProduct.unit || 'cái'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: 'var(--text-faint)', fontStyle: 'italic', padding: 8 }}>
+                Hiện chưa có tồn kho tại cơ sở nào.
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

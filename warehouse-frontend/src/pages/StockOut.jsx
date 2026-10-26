@@ -17,7 +17,7 @@ export default function StockOut() {
   const [warehouses, setWarehouses] = useState([]);
   const [products, setProducts] = useState([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(10);
 
   // Search & Filter
   const [search, setSearch] = useState('');
@@ -151,7 +151,6 @@ export default function StockOut() {
           value={formatMoney(stats.totalValue)}
           icon="💰"
           color="green"
-          valueStyle={{ fontSize: 22 }}
           subtext="Tổng doanh thu xuất"
         />
         <StatCard
@@ -216,13 +215,14 @@ export default function StockOut() {
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: 175, whiteSpace: 'nowrap' }}>Mã phiếu</th>
-                <th>Kho xuất</th>
-                <th>Khách hàng / Đối tác</th>
-                <th>Người tạo</th>
-                <th className="num" style={{ width: 150 }}>Tổng tiền</th>
-                <th style={{ width: 170 }}>Thời gian</th>
-                <th style={{ width: 100, textAlign: 'center' }}>Chi tiết</th>
+                <th style={{ width: 50, textAlign: 'center' }}>#</th>
+                <th style={{ width: 175, minWidth: 175, whiteSpace: 'nowrap' }}>Mã phiếu</th>
+                <th style={{ minWidth: 160 }}>Kho xuất</th>
+                <th style={{ minWidth: 180 }}>Khách hàng / Đối tác</th>
+                <th style={{ minWidth: 140 }}>Người tạo</th>
+                <th className="num" style={{ width: 160, minWidth: 160 }}>Tổng tiền</th>
+                <th style={{ width: 180, minWidth: 180 }}>Thời gian</th>
+                <th style={{ width: 110, textAlign: 'center' }}>Chi tiết</th>
               </tr>
             </thead>
             <tbody>
@@ -230,37 +230,41 @@ export default function StockOut() {
                 loading={loading}
                 error={error}
                 rows={filteredRows}
-                colSpan={7}
+                colSpan={8}
                 emptyIcon="📤"
-                emptyTitle={search || warehouseFilter ? 'Không tìm thấy phiếu xuất phù hợp' : 'Chưa có phiếu xuất kho nào'}
-                emptySubtext={
-                  search || warehouseFilter
-                    ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc kho hàng đã chọn.'
-                    : 'Bắt đầu quản lý xuất kho bằng cách lập phiếu xuất kho đầu tiên.'
-                }
-                actionText={!search && !warehouseFilter ? '+ Tạo phiếu xuất mới' : undefined}
-                onAction={!search && !warehouseFilter ? () => setModalOpen(true) : undefined}
+                isFiltered={Boolean(search.trim() || warehouseFilter)}
+                onClearFilter={() => {
+                  setSearch('');
+                  setWarehouseFilter('');
+                }}
+                emptyTitle="Chưa có phiếu xuất kho nào"
+                emptySubtext="Bắt đầu quản lý xuất kho bằng cách lập phiếu xuất kho đầu tiên."
+                actionText="+ Tạo phiếu xuất mới"
+                onAction={() => setModalOpen(true)}
                 onRetry={load}
               />
-              {!loading && !error && paginatedRows.map((r) => (
+              {!loading && !error && paginatedRows.map((r, idx) => (
                 <tr key={r.id} onClick={() => openDetail(r)} style={{ cursor: 'pointer' }}>
+                  <td style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 13, fontWeight: 600 }}>
+                    {(page - 1) * pageSize + idx + 1}
+                  </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     <span className="sku-chip">{r.code}</span>
                   </td>
-                  <td>
-                    <strong style={{ color: 'var(--ink)', fontSize: 14 }}>{r.warehouse_name}</strong>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <strong style={{ color: 'var(--ink)', fontSize: 14.5 }}>{r.warehouse_name}</strong>
                   </td>
-                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     {r.customer_name ? <span>{r.customer_name}</span> : <span className="text-faint">—</span>}
                   </td>
-                  <td style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{r.created_by || '—'}</td>
-                  <td className="num" style={{ fontWeight: 800, fontSize: 14, color: 'var(--ink)' }}>
+                  <td style={{ color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>{r.created_by || '—'}</td>
+                  <td className="num" style={{ fontWeight: 800, fontSize: 14.5, color: 'var(--ink)', whiteSpace: 'nowrap' }}>
                     {formatMoney(r.total_amount)}
                   </td>
-                  <td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
                     <DateTime value={r.created_at} prefix="Tạo lúc" />
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                     <button
                       className="btn btn-ghost btn-sm"
                       onClick={(e) => {
@@ -286,7 +290,8 @@ export default function StockOut() {
             setPageSize(newSize);
             setPage(1);
           }}
-          pageSizeOptions={[20, 50, 100]}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
+          hideOnSinglePage={false}
         />
       </div>
 
